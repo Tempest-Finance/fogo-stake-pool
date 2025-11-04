@@ -2556,6 +2556,215 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [`DepositWsolWithSession`](enum.Instruction.html).
+    #[inline(never)]
+    fn process_deposit_wsol_with_session(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        deposit_lamports: u64,
+        minimum_pool_tokens_out: Option<u64>,
+    ) -> ProgramResult {
+        use fogo_sessions_sdk::token::instruction::transfer_checked;
+        use fogo_sessions_sdk::{session::Session, token::PROGRAM_SIGNER_SEED};
+        use solana_program::program_pack::Pack;
+        use spl_associated_token_account::{
+            get_associated_token_address_with_program_id, tools::account::create_pda_account,
+        };
+
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let reserve_stake_account_info = next_account_info(account_info_iter)?;
+        let signer_or_session_info = next_account_info(account_info_iter)?;
+        let dest_user_pool_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
+        let referrer_fee_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        // wsol-specific accounts
+        let wsol_mint_info = next_account_info(account_info_iter)?;
+        let wsol_token_info = next_account_info(account_info_iter)?;
+        let wsol_transient_info = next_account_info(account_info_iter)?;
+        let program_signer_info = next_account_info(account_info_iter)?;
+        let payer_info = next_account_info(account_info_iter)?;
+
+        let sol_deposit_authority_info = next_account_info(account_info_iter);
+
+        if *wsol_mint_info.key != spl_token::native_mint::id() {
+            msg!("`wsol_mint` is not the native SOL mint");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        if *wsol_mint_info.owner != *token_program_info.key {
+            msg!("`wsol_mint` is not owned by the token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        if *wsol_token_info.owner != *token_program_info.key {
+            msg!("`wsol_token` is not owned by the token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let user_pubkey =
+            Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
+
+        let expected_wsol_ata = get_associated_token_address_with_program_id(
+            &user_pubkey,
+            wsol_mint_info.key,
+            token_program_info.key,
+        );
+
+        if *wsol_token_info.key != expected_wsol_ata {
+            msg!("`wsol_token` is not the expected ATA for the user");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        const TRANSIENT_SEED: &[u8] = b"transient_wsol";
+
+        let (expected_program_signer, program_signer_bump) =
+            Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+
+        if *program_signer_info.key != expected_program_signer {
+            msg!("`program_signer` does not match expected address");
+            return Err(ProgramError::InvalidSeeds);
+        }
+
+        let (expected_transient_pda, transient_bump) =
+            Pubkey::find_program_address(&[TRANSIENT_SEED, user_pubkey.as_ref()], program_id);
+
+        if *wsol_transient_info.key != expected_transient_pda {
+            msg!("`wsol_transient` does not match expected address");
+            return Err(ProgramError::InvalidSeeds);
+        }
+
+        let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
+        let transient_seeds: &[&[u8]] = &[TRANSIENT_SEED, user_pubkey.as_ref(), &[transient_bump]];
+
+        let rent = Rent::get()?;
+
+        // Create the transient wSOL account
+        create_pda_account(
+            payer_info,
+            &rent,
+            spl_token::state::Account::LEN,
+            token_program_info.key,
+            system_program_info,
+            wsol_transient_info,
+            transient_seeds,
+        )?;
+
+        invoke(
+            &spl_token::instruction::initialize_account3(
+                token_program_info.key,
+                wsol_transient_info.key,
+                wsol_mint_info.key,
+                program_signer_info.key,
+            )?,
+            &[wsol_transient_info.clone(), wsol_mint_info.clone()],
+        )?;
+
+        // Transfer wSOL from user to transient account and unwrap to SOL
+        invoke_signed(
+            &transfer_checked(
+                token_program_info.key,
+                wsol_token_info.key,
+                wsol_mint_info.key,
+                wsol_transient_info.key,
+                signer_or_session_info.key,
+                Some(program_signer_info.key),
+                deposit_lamports,
+                native_mint::DECIMALS,
+            )?,
+            &[
+                token_program_info.clone(),
+                wsol_token_info.clone(),
+                wsol_mint_info.clone(),
+                wsol_transient_info.clone(),
+                signer_or_session_info.clone(),
+                program_signer_info.clone(),
+            ],
+            &[program_signer_seeds],
+        )?;
+
+        // Close the transient wSOL account to unwrap to SOL
+        invoke_signed(
+            &spl_token::instruction::close_account(
+                token_program_info.key,
+                wsol_transient_info.key,
+                program_signer_info.key,
+                program_signer_info.key,
+                &[],
+            )?,
+            &[wsol_transient_info.clone(), program_signer_info.clone()],
+            &[program_signer_seeds],
+        )?;
+
+        // Refund rent to payer
+        let rent_lamports = rent
+            .minimum_balance(spl_token::state::Account::LEN)
+            .max(1)
+            .saturating_sub(if wsol_transient_info.lamports() > 0 {
+                wsol_transient_info.lamports()
+            } else {
+                0
+            });
+
+        invoke_signed(
+            &system_instruction::transfer(program_signer_info.key, payer_info.key, rent_lamports),
+            &[
+                system_program_info.clone(),
+                program_signer_info.clone(),
+                payer_info.clone(),
+            ],
+            &[program_signer_seeds],
+        )?;
+
+        // Deposit the unwrapped SOL into the stake pool's reserve stake account
+        invoke_signed(
+            &system_instruction::transfer(
+                program_signer_info.key,
+                reserve_stake_account_info.key,
+                deposit_lamports,
+            ),
+            &[
+                system_program_info.clone(),
+                program_signer_info.clone(),
+                reserve_stake_account_info.clone(),
+            ],
+            &[program_signer_seeds],
+        )?;
+
+        // Regular `deposit_sol` processing
+
+        let mut new_accounts = vec![
+            stake_pool_info.clone(),
+            withdraw_authority_info.clone(),
+            reserve_stake_account_info.clone(),
+            signer_or_session_info.clone(),
+            dest_user_pool_info.clone(),
+            manager_fee_info.clone(),
+            referrer_fee_info.clone(),
+            pool_mint_info.clone(),
+            system_program_info.clone(),
+            token_program_info.clone(),
+        ];
+
+        if let Ok(sol_deposit_authority_info) = sol_deposit_authority_info {
+            new_accounts.push(sol_deposit_authority_info.clone());
+        }
+
+        Self::process_deposit_sol(
+            program_id,
+            &new_accounts,
+            deposit_lamports,
+            minimum_pool_tokens_out,
+            // the SOL transfer has already been done above
+            true,
+        )
+    }
+
     /// Processes [`DepositSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_deposit_sol(
@@ -2563,6 +2772,7 @@ impl Processor {
         accounts: &[AccountInfo],
         deposit_lamports: u64,
         minimum_pool_tokens_out: Option<u64>,
+        is_wsol_path: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2648,11 +2858,13 @@ impl Processor {
             }
         }
 
-        Self::sol_transfer(
-            from_user_lamports_info.clone(),
-            reserve_stake_account_info.clone(),
-            deposit_lamports,
-        )?;
+        if !is_wsol_path {
+            Self::sol_transfer(
+                from_user_lamports_info.clone(),
+                reserve_stake_account_info.clone(),
+                deposit_lamports,
+            )?;
+        }
 
         Self::token_mint_to(
             stake_pool_info.key,
@@ -3019,6 +3231,107 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [`WithdrawWsolWithSession`](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
+    fn process_withdraw_wsol_with_session(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        pool_tokens: u64,
+        minimum_lamports_out: Option<u64>,
+    ) -> ProgramResult {
+        use fogo_sessions_sdk::session::Session;
+        use spl_associated_token_account::get_associated_token_address_with_program_id;
+
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let signer_or_session_info = next_account_info(account_info_iter)?;
+        let burn_from_pool_info = next_account_info(account_info_iter)?;
+        let reserve_stake_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_program_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        // wsol-specific accounts
+        let wsol_mint_info = next_account_info(account_info_iter)?;
+        let program_signer_info = next_account_info(account_info_iter)?;
+
+        let sol_withdraw_authority_info = next_account_info(account_info_iter);
+
+        if *wsol_mint_info.key != spl_token::native_mint::id() {
+            msg!("`wsol_mint` is not the native WSOL mint");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        if *wsol_mint_info.owner != *token_program_info.key {
+            msg!("`wsol_mint` is not owned by the token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        if *destination_account_info.owner != *token_program_info.key {
+            msg!("`destination_account` is not owned by the token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let user_pubkey =
+            Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
+
+        let expected_wsol_ata = get_associated_token_address_with_program_id(
+            &user_pubkey,
+            wsol_mint_info.key,
+            token_program_info.key,
+        );
+
+        if *destination_account_info.key != expected_wsol_ata {
+            msg!("`destination_account` is not the user's ATA for WSOL");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Regular `withdraw_sol` processing
+        {
+            let mut accounts: Vec<AccountInfo> = vec![
+                stake_pool_info.clone(),
+                withdraw_authority_info.clone(),
+                signer_or_session_info.clone(),
+                burn_from_pool_info.clone(),
+                reserve_stake_info.clone(),
+                destination_account_info.clone(),
+                manager_fee_info.clone(),
+                pool_mint_info.clone(),
+                clock_info.clone(),
+                stake_history_info.clone(),
+                stake_program_info.clone(),
+                token_program_info.clone(),
+            ];
+
+            if let Ok(sol_withdraw_authority_info) = sol_withdraw_authority_info {
+                accounts.push(sol_withdraw_authority_info.clone());
+            } else {
+                // dummy to keep account order consistent
+                accounts.push(stake_program_info.clone());
+            }
+
+            accounts.push(program_signer_info.clone());
+
+            Self::process_withdraw_sol(program_id, &accounts, pool_tokens, minimum_lamports_out)?;
+        }
+
+        // Sync the native account to update its wSOL balance
+        invoke(
+            &spl_token::instruction::sync_native(
+                token_program_info.key,
+                destination_account_info.key,
+            )?,
+            &[destination_account_info.clone()],
+        )?;
+
+        Ok(())
+    }
+
     /// Processes [`WithdrawSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
@@ -3122,24 +3435,82 @@ impl Processor {
             return Err(StakePoolError::WrongStakeStake.into());
         };
 
-        Self::token_burn(
-            token_program_info.clone(),
-            burn_from_pool_info.clone(),
-            pool_mint_info.clone(),
-            user_transfer_authority_info.clone(),
-            pool_tokens_burnt,
-        )?;
+        // Determine if we are using the WSOL special path (with program signer account)
+        if let Ok(program_signer_info) = next_account_info(account_info_iter) {
+            use fogo_sessions_sdk::token::instruction::burn;
+            use fogo_sessions_sdk::token::instruction::transfer_checked;
+            use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
 
-        if pool_tokens_fee > 0 {
-            Self::token_transfer(
+            let (expected_program_signer, program_signer_bump) =
+                Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+
+            if expected_program_signer != *program_signer_info.key {
+                msg!("Invalid program signer account");
+                return Err(ProgramError::InvalidSeeds);
+            }
+
+            let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
+
+            invoke_signed(
+                &burn(
+                    token_program_info.key,
+                    burn_from_pool_info.key,
+                    pool_mint_info.key,
+                    user_transfer_authority_info.key,
+                    Some(program_signer_info.key),
+                    pool_tokens_burnt,
+                )?,
+                &[
+                    burn_from_pool_info.clone(),
+                    pool_mint_info.clone(),
+                    user_transfer_authority_info.clone(),
+                    program_signer_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+
+            if pool_tokens_fee > 0 {
+                invoke_signed(
+                    &transfer_checked(
+                        token_program_info.key,
+                        burn_from_pool_info.key,
+                        pool_mint_info.key,
+                        manager_fee_info.key,
+                        user_transfer_authority_info.key,
+                        Some(program_signer_info.key),
+                        pool_tokens_fee,
+                        decimals,
+                    )?,
+                    &[
+                        burn_from_pool_info.clone(),
+                        pool_mint_info.clone(),
+                        manager_fee_info.clone(),
+                        user_transfer_authority_info.clone(),
+                        program_signer_info.clone(),
+                    ],
+                    &[program_signer_seeds],
+                )?;
+            }
+        } else {
+            Self::token_burn(
                 token_program_info.clone(),
                 burn_from_pool_info.clone(),
                 pool_mint_info.clone(),
-                manager_fee_info.clone(),
                 user_transfer_authority_info.clone(),
-                pool_tokens_fee,
-                decimals,
+                pool_tokens_burnt,
             )?;
+
+            if pool_tokens_fee > 0 {
+                Self::token_transfer(
+                    token_program_info.clone(),
+                    burn_from_pool_info.clone(),
+                    pool_mint_info.clone(),
+                    manager_fee_info.clone(),
+                    user_transfer_authority_info.clone(),
+                    pool_tokens_fee,
+                    decimals,
+                )?;
+            }
         }
 
         Self::stake_withdraw(
@@ -3597,7 +3968,7 @@ impl Processor {
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
-                Self::process_deposit_sol(program_id, accounts, lamports, None)
+                Self::process_deposit_sol(program_id, accounts, lamports, None, false)
             }
             StakePoolInstruction::WithdrawSol(pool_tokens) => {
                 msg!("Instruction: WithdrawSol");
@@ -3644,6 +4015,7 @@ impl Processor {
                     accounts,
                     lamports_in,
                     Some(minimum_pool_tokens_out),
+                    false,
                 )
             }
             StakePoolInstruction::WithdrawSolWithSlippage {
@@ -3657,6 +4029,14 @@ impl Processor {
                     pool_tokens_in,
                     Some(minimum_lamports_out),
                 )
+            }
+            StakePoolInstruction::DepositWsolWithSession(lamports) => {
+                msg!("Instruction: DepositWsolWithSession");
+                Self::process_deposit_wsol_with_session(program_id, accounts, lamports, None)
+            }
+            StakePoolInstruction::WithdrawWsolWithSession(amount) => {
+                msg!("Instruction: WithdrawWsolWithSession");
+                Self::process_withdraw_wsol_with_session(program_id, accounts, amount, None)
             }
         }
     }

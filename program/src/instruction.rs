@@ -737,6 +737,45 @@ pub enum StakePoolInstruction {
         /// Minimum amount of lamports that must be received
         minimum_lamports_out: u64,
     },
+
+    ///   Deposit wrapped SOL via a Fogo session.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Reserve stake account
+    ///   3. `[s]` Signer or Session wSOL source account
+    ///   3. `[w]` User's destination pool token account
+    ///   4. `[w]` Manager fee account
+    ///   5. `[w]` Referrer fee account
+    ///   6. `[w]` Pool token mint
+    ///   7. `[]` System Program
+    ///   8. `[]` Token Program
+    ///  9. `[]` Native mint (wSOL)
+    ///  10. `[w]` wSOL token account owned by the user
+    ///  11. `[w]` Transient wSOL token account
+    ///  12. `[w]` Session Program Signer
+    ///  13. `[s]` Payer (Paymaster)
+    ///  14. `[s]` (Optional) Stake pool SOL deposit authority
+    DepositWsolWithSession(u64),
+
+    ///   Withdraw wrapped SOL via a Fogo session.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[s]` Signer or Session wSOL source account
+    ///   3. `[w]` User account to burn pool tokens
+    ///   4. `[w]` Reserve stake account, to withdraw SOL
+    ///   5. `[w]` Account receiving the wSOL from the reserve, must be a token account
+    ///   6. `[w]` Account to receive pool fee tokens
+    ///   7. `[w]` Pool token mint account
+    ///   8. `[]` Clock sysvar
+    ///   9. `[]` Stake history sysvar
+    ///  10. `[]` Stake program account
+    ///  11. `[]` Token program id
+    ///  12. `[]` Native mint (wSOL)
+    ///  13. `[w]` Session Program Signer
+    ///  14. `[s]` (Optional) Stake pool SOL withdraw authority
+    WithdrawWsolWithSession(u64),
 }
 
 /// Creates an `Initialize` instruction.
@@ -2030,6 +2069,7 @@ fn deposit_sol_internal(
     sol_deposit_authority: Option<&Pubkey>,
     lamports_in: u64,
     minimum_pool_tokens_out: Option<u64>,
+    wsol_accounts: Option<(&Pubkey, &Pubkey)>, // (wsol_account, wsol_transient)
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -2045,6 +2085,10 @@ fn deposit_sol_internal(
     ];
     if let Some(sol_deposit_authority) = sol_deposit_authority {
         accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
+    }
+    if let Some((wsol_account, wsol_transient)) = wsol_accounts {
+        accounts.push(AccountMeta::new(*wsol_account, false));
+        accounts.push(AccountMeta::new(*wsol_transient, false));
     }
     if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
         Instruction {
@@ -2093,6 +2137,7 @@ pub fn deposit_sol(
         None,
         lamports_in,
         None,
+        None,
     )
 }
 
@@ -2126,6 +2171,7 @@ pub fn deposit_sol_with_slippage(
         None,
         lamports_in,
         Some(minimum_pool_tokens_out),
+        None,
     )
 }
 
@@ -2159,6 +2205,7 @@ pub fn deposit_sol_with_authority(
         token_program_id,
         Some(sol_deposit_authority),
         lamports_in,
+        None,
         None,
     )
 }
@@ -2194,6 +2241,7 @@ pub fn deposit_sol_with_authority_and_slippage(
         Some(sol_deposit_authority),
         lamports_in,
         Some(minimum_pool_tokens_out),
+        None,
     )
 }
 
