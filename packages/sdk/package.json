@@ -1,29 +1,20 @@
 {
-  "name": "@solana/spl-stake-pool",
+  "name": "@ignitionfi/spl-stake-pool",
   "version": "1.1.8",
-  "description": "SPL Stake Pool Program JS API",
-  "scripts": {
-    "build": "tsc && cross-env NODE_ENV=production rollup -c",
-    "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml",
-    "format": "prettier --check src test",
-    "format:fix": "prettier --write src test",
-    "lint": "eslint --max-warnings 0 .",
-    "lint:fix": "eslint . --fix",
-    "test": "jest",
-    "clean": "rimraf ./dist"
-  },
-  "keywords": [],
+  "description": "Ignition Stake Pool SDK for FOGO",
   "contributors": [
     "Anza Maintainers <maintainers@anza.xyz>",
     "Lieu Zheng Hong",
     "mFactory Team (https://mfactory.ch/)",
     "SolBlaze <contact@solblaze.org> (https://solblaze.org/)"
   ],
+  "license": "ISC",
   "homepage": "https://solana.com",
   "repository": {
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
   },
+  "keywords": [],
   "publishConfig": {
     "access": "public"
   },
@@ -43,7 +34,18 @@
     "/dist",
     "/src"
   ],
-  "license": "ISC",
+  "scripts": {
+    "build": "tsc && cross-env NODE_ENV=production rollup -c",
+    "dev": "tsc && cross-env NODE_ENV=production rollup -c -w",
+    "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml",
+    "format": "prettier --check src test",
+    "format:fix": "prettier --write src test",
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint . --fix",
+    "test": "jest",
+    "clean": "rimraf ./dist",
+    "postinstall": "npm run build"
+  },
   "dependencies": {
     "@solana/buffer-layout": "^4.0.1",
     "@solana/spl-token": "0.4.13",
@@ -65,17 +67,12 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/node-fetch": "^2.6.12",
-    "@typescript-eslint/eslint-plugin": "^8.4.0",
-    "@typescript-eslint/parser": "^8.4.0",
     "cross-env": "^10.0.0",
-    "eslint": "^8.57.0",
     "jest": "^30.0.3",
-    "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
     "rollup": "^4.28.0",
     "rollup-plugin-dts": "^6.1.1",
-    "ts-jest": "^29.2.5",
-    "typescript": "^5.7.2"
+    "ts-jest": "^29.2.5"
   },
   "jest": {
     "moduleFileExtensions": [

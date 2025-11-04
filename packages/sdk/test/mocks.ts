@@ -1,15 +1,15 @@
-import { AccountInfo, LAMPORTS_PER_SOL, PublicKey, StakeProgram } from '@solana/web3.js';
-import BN from 'bn.js';
-import { ValidatorStakeInfo } from '../src';
-import { AccountLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { ValidatorListLayout, ValidatorStakeInfoStatus } from '../src/layouts';
+import { AccountLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { AccountInfo, LAMPORTS_PER_SOL, PublicKey, StakeProgram } from '@solana/web3.js'
+import BN from 'bn.js'
+import { ValidatorStakeInfo } from '../src'
+import { ValidatorListLayout, ValidatorStakeInfoStatus } from '../src/layouts'
 
 export const CONSTANTS = {
   poolTokenAccount: new PublicKey('GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd'),
   validatorStakeAccountAddress: new PublicKey(
     new BN('69184b7f1bc836271c4ac0e29e53eb38a38ea0e7bcde693c45b30d1592a5a678', 'hex'),
   ),
-};
+}
 
 export const stakePoolMock = {
   accountType: 1,
@@ -70,7 +70,7 @@ export const stakePoolMock = {
   },
   lastEpochPoolTokenSupply: new BN(0),
   lastEpochTotalLamports: new BN(0),
-};
+}
 
 export const validatorListMock = {
   accountType: 0,
@@ -110,10 +110,10 @@ export const validatorListMock = {
       transientSeedSuffixEnd: new BN('a', 'hex'),
     },
   ],
-};
+}
 
 export function mockTokenAccount(amount = 0) {
-  const data = Buffer.alloc(165);
+  const data = Buffer.alloc(165)
   AccountLayout.encode(
     {
       mint: stakePoolMock.poolMint,
@@ -129,31 +129,31 @@ export function mockTokenAccount(amount = 0) {
       closeAuthority: new PublicKey(0),
     },
     data,
-  );
+  )
 
   return <AccountInfo<any>>{
     executable: true,
     owner: TOKEN_PROGRAM_ID,
     lamports: amount,
     data,
-  };
+  }
 }
 
-export const mockRpc = (data: any): any => {
+export function mockRpc(data: any): any {
   const value = {
     owner: StakeProgram.programId,
     lamports: LAMPORTS_PER_SOL,
-    data: data,
+    data,
     executable: false,
     rentEpoch: 0,
-  };
+  }
   return {
     context: {
       slot: 11,
     },
-    value: value,
-  };
-};
+    value,
+  }
+}
 
 export const stakeAccountData = {
   program: 'stake',
@@ -186,32 +186,32 @@ export const stakeAccountData = {
       },
     },
   },
-};
+}
 
 export const uninitializedStakeAccount = {
   program: 'stake',
   parsed: {
     type: 'uninitialized',
   },
-};
+}
 
 export function mockValidatorsStakeAccount() {
-  const data = Buffer.alloc(1024);
+  const data = Buffer.alloc(1024)
   return <AccountInfo<any>>{
     executable: false,
     owner: StakeProgram.programId,
     lamports: 3000000000,
     data,
-  };
+  }
 }
 
 export function mockValidatorList() {
-  const data = Buffer.alloc(1024);
-  ValidatorListLayout.encode(validatorListMock, data);
+  const data = Buffer.alloc(1024)
+  ValidatorListLayout.encode(validatorListMock, data)
   return <AccountInfo<any>>{
     executable: true,
     owner: new PublicKey(0),
     lamports: 0,
     data,
-  };
+  }
 }

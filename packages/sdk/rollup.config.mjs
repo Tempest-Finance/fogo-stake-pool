@@ -1,13 +1,13 @@
-import typescript from '@rollup/plugin-typescript';
-import commonjs from '@rollup/plugin-commonjs';
-import json from '@rollup/plugin-json';
-import nodeResolve from '@rollup/plugin-node-resolve';
-import terser from '@rollup/plugin-terser';
+import commonjs from '@rollup/plugin-commonjs'
+import json from '@rollup/plugin-json'
+import nodeResolve from '@rollup/plugin-node-resolve'
+import terser from '@rollup/plugin-terser'
+import typescript from '@rollup/plugin-typescript'
 
-const extensions = ['.js', '.ts'];
+const extensions = ['.js', '.ts']
 
 function generateConfig(configType, format) {
-  const browser = configType === 'browser';
+  const browser = configType === 'browser'
 
   const config = {
     input: 'src/index.ts',
@@ -21,19 +21,19 @@ function generateConfig(configType, format) {
       }),
       typescript(),
     ],
-    onwarn: function (warning, rollupWarn) {
+    onwarn(warning, rollupWarn) {
       if (warning.code !== 'CIRCULAR_DEPENDENCY') {
-        rollupWarn(warning);
+        rollupWarn(warning)
       }
     },
     treeshake: {
       moduleSideEffects: false,
     },
-  };
+  }
 
   if (browser) {
     if (format === 'iife') {
-      config.external = ['http', 'https'];
+      config.external = ['http', 'https']
 
       config.output = [
         {
@@ -49,7 +49,7 @@ function generateConfig(configType, format) {
           sourcemap: true,
           plugins: [terser({ mangle: false, compress: false })],
         },
-      ];
+      ]
     } else {
       config.output = [
         {
@@ -62,7 +62,7 @@ function generateConfig(configType, format) {
           format: 'es',
           sourcemap: true,
         },
-      ];
+      ]
 
       // Prevent dependencies from being bundled
       config.external = [
@@ -72,12 +72,12 @@ function generateConfig(configType, format) {
         'bn.js',
         'buffer',
         'buffer-layout',
-      ];
+      ]
     }
 
     // TODO: Find a workaround to avoid resolving the following JSON file:
     // `node_modules/secp256k1/node_modules/elliptic/package.json`
-    config.plugins.push(json());
+    config.plugins.push(json())
   } else {
     config.output = [
       {
@@ -90,7 +90,7 @@ function generateConfig(configType, format) {
         format: 'es',
         sourcemap: true,
       },
-    ];
+    ]
 
     // Prevent dependencies from being bundled
     config.external = [
@@ -100,14 +100,14 @@ function generateConfig(configType, format) {
       'bn.js',
       'buffer',
       'buffer-layout',
-    ];
+    ]
   }
 
-  return config;
+  return config
 }
 
 export default [
   generateConfig('node'),
   generateConfig('browser'),
   generateConfig('browser', 'iife'),
-];
+]

@@ -1,25 +1,25 @@
-import { Layout, publicKey, u64, option, vec } from './codecs';
-import { struct, Layout as LayoutCls, u8, u32 } from 'buffer-layout';
-import { PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
+import { PublicKey } from '@solana/web3.js'
+import BN from 'bn.js'
+import { Layout as LayoutCls, struct, u8, u32 } from 'buffer-layout'
 import {
-  Infer,
-  number,
-  nullable,
-  enums,
-  type,
   coerce,
+  enums,
+  Infer,
   instance,
-  string,
+  nullable,
+  number,
   optional,
-} from 'superstruct';
+  string,
+  type,
+} from 'superstruct'
+import { Layout, option, publicKey, u64, vec } from './codecs'
 
 export interface Fee {
-  denominator: BN;
-  numerator: BN;
+  denominator: BN
+  numerator: BN
 }
 
-const feeFields = [u64('denominator'), u64('numerator')];
+const feeFields = [u64('denominator'), u64('numerator')]
 
 export enum AccountType {
   Uninitialized,
@@ -28,64 +28,66 @@ export enum AccountType {
 }
 
 export const BigNumFromString = coerce(instance(BN), string(), (value) => {
-  if (typeof value === 'string') return new BN(value, 10);
-  throw new Error('invalid big num');
-});
+  if (typeof value === 'string') {
+    return new BN(value, 10)
+  }
+  throw new Error('invalid big num')
+})
 
 export const PublicKeyFromString = coerce(
   instance(PublicKey),
   string(),
-  (value) => new PublicKey(value),
-);
+  value => new PublicKey(value),
+)
 
 export class FutureEpochLayout<T> extends LayoutCls<T | null> {
-  layout: Layout<T>;
-  discriminator: Layout<number>;
+  layout: Layout<T>
+  discriminator: Layout<number>
 
   constructor(layout: Layout<T>, property?: string) {
-    super(-1, property);
-    this.layout = layout;
-    this.discriminator = u8();
+    super(-1, property)
+    this.layout = layout
+    this.discriminator = u8()
   }
 
   encode(src: T | null, b: Buffer, offset = 0): number {
     if (src === null || src === undefined) {
-      return this.discriminator.encode(0, b, offset);
+      return this.discriminator.encode(0, b, offset)
     }
     // This isn't right, but we don't typically encode outside of tests
-    this.discriminator.encode(2, b, offset);
-    return this.layout.encode(src, b, offset + 1) + 1;
+    this.discriminator.encode(2, b, offset)
+    return this.layout.encode(src, b, offset + 1) + 1
   }
 
   decode(b: Buffer, offset = 0): T | null {
-    const discriminator = this.discriminator.decode(b, offset);
+    const discriminator = this.discriminator.decode(b, offset)
     if (discriminator === 0) {
-      return null;
+      return null
     } else if (discriminator === 1 || discriminator === 2) {
-      return this.layout.decode(b, offset + 1);
+      return this.layout.decode(b, offset + 1)
     }
-    throw new Error('Invalid future epoch ' + this.property);
+    throw new Error(`Invalid future epoch ${this.property}`)
   }
 
   getSpan(b: Buffer, offset = 0): number {
-    const discriminator = this.discriminator.decode(b, offset);
+    const discriminator = this.discriminator.decode(b, offset)
     if (discriminator === 0) {
-      return 1;
+      return 1
     } else if (discriminator === 1 || discriminator === 2) {
-      return this.layout.getSpan(b, offset + 1) + 1;
+      return this.layout.getSpan(b, offset + 1) + 1
     }
-    throw new Error('Invalid future epoch ' + this.property);
+    throw new Error(`Invalid future epoch ${this.property}`)
   }
 }
 
 export function futureEpoch<T>(layout: Layout<T>, property?: string): LayoutCls<T | null> {
-  return new FutureEpochLayout<T>(layout, property);
+  return new FutureEpochLayout<T>(layout, property)
 }
 
-export type StakeAccountType = Infer<typeof StakeAccountType>;
-export const StakeAccountType = enums(['uninitialized', 'initialized', 'delegated', 'rewardsPool']);
+export type StakeAccountType = Infer<typeof StakeAccountType>
+export const StakeAccountType = enums(['uninitialized', 'initialized', 'delegated', 'rewardsPool'])
 
-export type StakeMeta = Infer<typeof StakeMeta>;
+export type StakeMeta = Infer<typeof StakeMeta>
 export const StakeMeta = type({
   rentExemptReserve: BigNumFromString,
   authorized: type({
@@ -97,9 +99,9 @@ export const StakeMeta = type({
     epoch: number(),
     custodian: PublicKeyFromString,
   }),
-});
+})
 
-export type StakeAccountInfo = Infer<typeof StakeAccountInfo>;
+export type StakeAccountInfo = Infer<typeof StakeAccountInfo>
 export const StakeAccountInfo = type({
   meta: StakeMeta,
   stake: nullable(
@@ -114,50 +116,50 @@ export const StakeAccountInfo = type({
       creditsObserved: number(),
     }),
   ),
-});
+})
 
-export type StakeAccount = Infer<typeof StakeAccount>;
+export type StakeAccount = Infer<typeof StakeAccount>
 export const StakeAccount = type({
   type: StakeAccountType,
   info: optional(StakeAccountInfo),
-});
+})
 export interface Lockup {
-  unixTimestamp: BN;
-  epoch: BN;
-  custodian: PublicKey;
+  unixTimestamp: BN
+  epoch: BN
+  custodian: PublicKey
 }
 
 export interface StakePool {
-  accountType: AccountType;
-  manager: PublicKey;
-  staker: PublicKey;
-  stakeDepositAuthority: PublicKey;
-  stakeWithdrawBumpSeed: number;
-  validatorList: PublicKey;
-  reserveStake: PublicKey;
-  poolMint: PublicKey;
-  managerFeeAccount: PublicKey;
-  tokenProgramId: PublicKey;
-  totalLamports: BN;
-  poolTokenSupply: BN;
-  lastUpdateEpoch: BN;
-  lockup: Lockup;
-  epochFee: Fee;
-  nextEpochFee?: Fee | undefined;
-  preferredDepositValidatorVoteAddress?: PublicKey | undefined;
-  preferredWithdrawValidatorVoteAddress?: PublicKey | undefined;
-  stakeDepositFee: Fee;
-  stakeWithdrawalFee: Fee;
-  nextStakeWithdrawalFee?: Fee | undefined;
-  stakeReferralFee: number;
-  solDepositAuthority?: PublicKey | undefined;
-  solDepositFee: Fee;
-  solReferralFee: number;
-  solWithdrawAuthority?: PublicKey | undefined;
-  solWithdrawalFee: Fee;
-  nextSolWithdrawalFee?: Fee | undefined;
-  lastEpochPoolTokenSupply: BN;
-  lastEpochTotalLamports: BN;
+  accountType: AccountType
+  manager: PublicKey
+  staker: PublicKey
+  stakeDepositAuthority: PublicKey
+  stakeWithdrawBumpSeed: number
+  validatorList: PublicKey
+  reserveStake: PublicKey
+  poolMint: PublicKey
+  managerFeeAccount: PublicKey
+  tokenProgramId: PublicKey
+  totalLamports: BN
+  poolTokenSupply: BN
+  lastUpdateEpoch: BN
+  lockup: Lockup
+  epochFee: Fee
+  nextEpochFee?: Fee | undefined
+  preferredDepositValidatorVoteAddress?: PublicKey | undefined
+  preferredWithdrawValidatorVoteAddress?: PublicKey | undefined
+  stakeDepositFee: Fee
+  stakeWithdrawalFee: Fee
+  nextStakeWithdrawalFee?: Fee | undefined
+  stakeReferralFee: number
+  solDepositAuthority?: PublicKey | undefined
+  solDepositFee: Fee
+  solReferralFee: number
+  solWithdrawAuthority?: PublicKey | undefined
+  solWithdrawalFee: Fee
+  nextSolWithdrawalFee?: Fee | undefined
+  lastEpochPoolTokenSupply: BN
+  lastEpochTotalLamports: BN
 }
 
 export const StakePoolLayout = struct<StakePool>([
@@ -191,7 +193,7 @@ export const StakePoolLayout = struct<StakePool>([
   futureEpoch(struct(feeFields), 'nextSolWithdrawalFee'),
   u64('lastEpochPoolTokenSupply'),
   u64('lastEpochTotalLamports'),
-]);
+])
 
 export enum ValidatorStakeInfoStatus {
   Active,
@@ -200,13 +202,13 @@ export enum ValidatorStakeInfoStatus {
 }
 
 export interface ValidatorStakeInfo {
-  status: ValidatorStakeInfoStatus;
-  voteAccountAddress: PublicKey;
-  activeStakeLamports: BN;
-  transientStakeLamports: BN;
-  transientSeedSuffixStart: BN;
-  transientSeedSuffixEnd: BN;
-  lastUpdateEpoch: BN;
+  status: ValidatorStakeInfoStatus
+  voteAccountAddress: PublicKey
+  activeStakeLamports: BN
+  transientStakeLamports: BN
+  transientSeedSuffixStart: BN
+  transientSeedSuffixEnd: BN
+  lastUpdateEpoch: BN
 }
 
 export const ValidatorStakeInfoLayout = struct<ValidatorStakeInfo>([
@@ -228,19 +230,19 @@ export const ValidatorStakeInfoLayout = struct<ValidatorStakeInfo>([
   u8('status'),
   /// Validator vote account address
   publicKey('voteAccountAddress'),
-]);
+])
 
 export interface ValidatorList {
   /// Account type, must be ValidatorList currently
-  accountType: number;
+  accountType: number
   /// Maximum allowable number of validators
-  maxValidators: number;
+  maxValidators: number
   /// List of stake info for each validator in the pool
-  validators: ValidatorStakeInfo[];
+  validators: ValidatorStakeInfo[]
 }
 
 export const ValidatorListLayout = struct<ValidatorList>([
   u8('accountType'),
   u32('maxValidators'),
   vec(ValidatorStakeInfoLayout, 'validators'),
-]);
+])
