@@ -1,12 +1,14 @@
-# stake-pool program
+# Ignition stake-pool program (Fogo blockchain)
+
+---
 
 Full documentation is available at https://spl.solana.com/stake-pool
 
-The command-line interface tool is available in the `./cli` directory.
+Typescript bindings are available in the `./packages/sdk` directory.
 
-Javascript bindings are available in the `./js` directory.
+The command-line interface tool is available in the `./clients/cli` directory.
 
-Python bindings are available in the `./py` directory.
+Python bindings are available in the `./clients/py` directory.
 
 ## Audit
 
