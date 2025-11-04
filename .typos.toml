@@ -1,0 +1,37 @@
+# https://github.com/crate-ci/typos
+# cargo install typos-cli
+# typos
+
+[files]
+extend-exclude = [
+  "**/*.snap",
+  "pnpm-lock.yaml",
+  "cliff.toml",
+  "Cargo.lock",
+  "**/node_modules/**",
+  "**/target/**",
+  "*.log",
+]
+
+[default]
+extend-ignore-re = [
+  "(?Rm)^.*(#|//)\\s*spellchecker:disable-line$",
+  "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+  # Ignore pubkeys
+  "(?i)[a-f0-9]{32,}",
+  "[A-Za-z0-9+/]{20,}={0,2}", # Base64 variants
+]
+
+[default.extend-words]
+# Project-specific terms to avoid false positives
+crypto = "crypto"
+pubkey = "pubkey"
+npm = "npm"
+cargo = "cargo"
+typescript = "typescript"
+
+[default.extend-identifiers]
+# Custom identifiers like variable names or types
+PubKey = "PubKey"
+CargoLock = "CargoLock"
+NpmInstall = "NpmInstall"
