@@ -15,7 +15,7 @@
   "dependencies": {
     "@ant-design/nextjs-registry": "^1.1.0",
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@fogo/sessions-idls": "^0.0.7",
     "@fogo/sessions-sdk": "^0.0.18",
     "@fogo/sessions-sdk-react": "^0.0.28",
