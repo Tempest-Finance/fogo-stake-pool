@@ -1,0 +1,52 @@
+[[domains]]
+domain = "https://app.ignitionfi.xyz"
+enable_session_management = true
+enable_preflight_simulation = true
+
+## Variation 0: Deposit
+[[domains.tx_variations]]
+version = "v1"
+name = "Deposit"
+max_gas_spend = 200000
+
+# (Optional) Create associated token account (discriminator byte = 1)
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 1 }] }
+
+# DepositWsolWithSession (discriminator 27)
+[[domains.tx_variations.instructions]]
+program = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
+required = true
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 27 }] }
+
+## Variation 1: Withdraw
+[[domains.tx_variations]]
+version = "v1"
+name = "Withdraw"
+max_gas_spend = 200000
+
+# (Optional) Create associated token account (discriminator byte = 1)
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 1 }] }
+
+# WithdrawWsolWithSession (discriminator 28)
+[[domains.tx_variations.instructions]]
+program = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
+required = true
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 28 }] }
