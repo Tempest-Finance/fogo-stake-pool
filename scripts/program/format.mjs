@@ -1,5 +1,4 @@
 #!/usr/bin/env zx
-import 'zx/globals';
 import {
   cliArguments,
   getProgramFolders,
@@ -7,23 +6,24 @@ import {
   partitionArguments,
   popArgument,
   workingDirectory,
-} from '../utils.mjs';
+} from '../utils.mjs'
+import 'zx/globals'
 
 // Configure additional arguments here, e.g.:
 // ['--arg1', '--arg2', ...cliArguments()]
-const formatArgs = cliArguments();
+const formatArgs = cliArguments()
 
-const fix = popArgument(formatArgs, '--fix');
-const [cargoArgs, fmtArgs] = partitionArguments(formatArgs, '--');
-const toolchain = getToolchainArgument('format');
+const fix = popArgument(formatArgs, '--fix')
+const [cargoArgs, fmtArgs] = partitionArguments(formatArgs, '--')
+const toolchain = getToolchainArgument('format')
 
 // Format the programs.
 for (const folder of getProgramFolders()) {
-  const manifestPath = path.join(workingDirectory, folder, 'Cargo.toml');
+  const manifestPath = path.join(workingDirectory, folder, 'Cargo.toml')
 
   if (fix) {
-    await $`cargo ${toolchain} fmt --manifest-path ${manifestPath} ${cargoArgs} -- ${fmtArgs}`;
+    await $`cargo ${toolchain} fmt --manifest-path ${manifestPath} ${cargoArgs} -- ${fmtArgs}`
   } else {
-    await $`cargo ${toolchain} fmt --manifest-path ${manifestPath} ${cargoArgs} -- --check ${fmtArgs}`;
+    await $`cargo ${toolchain} fmt --manifest-path ${manifestPath} ${cargoArgs} -- --check ${fmtArgs}`
   }
 }

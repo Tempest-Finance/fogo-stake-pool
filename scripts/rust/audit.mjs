@@ -1,5 +1,5 @@
 #!/usr/bin/env zx
-import 'zx/globals';
+import 'zx/globals'
 
 const advisories = [
   // ed25519-dalek: Double Public Key Signing Function Oracle Attack
@@ -31,12 +31,12 @@ const advisories = [
   // need to solve this dependency tree:
   // jsonrpc-core-client v18.0.0 -> jsonrpc-client-transports v18.0.0 -> url v1.7.2 -> idna v0.1.5
   'RUSTSEC-2024-0421',
-];
+]
 const ignores = []
-advisories.forEach(x => {
-  ignores.push('--ignore');
-  ignores.push(x);
-});
+advisories.forEach((x) => {
+  ignores.push('--ignore')
+  ignores.push(x)
+})
 
 // Check Solana version.
-await $`cargo audit ${ignores}`;
+await $`cargo audit ${ignores}`

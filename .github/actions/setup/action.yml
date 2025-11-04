@@ -27,7 +27,7 @@ inputs:
     required: false
 
 runs:
-  using: 'composite'
+  using: composite
   steps:
     - name: Setup pnpm
       uses: pnpm/action-setup@v3
@@ -36,7 +36,7 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: 20
-        cache: 'pnpm'
+        cache: pnpm
 
     - name: Purge unused ubuntu runner directories
       if: ${{ inputs.purge == 'true' }}

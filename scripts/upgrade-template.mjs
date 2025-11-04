@@ -1,12 +1,12 @@
 #!/usr/bin/env zx
-import 'zx/globals';
-import { getCargo } from './utils.mjs';
+import { getCargo } from './utils.mjs'
+import 'zx/globals'
 
 // Arguments to pass to the `create-solana-program` command.
-const rustClientCargo = getCargo(path.join('clients', 'rust'));
+const rustClientCargo = getCargo(path.join('clients', 'rust'))
 const jsClientPkg = require(
-  path.join(__dirname, '..', 'clients', 'js', 'package.json')
-);
+  path.join(__dirname, '..', 'clients', 'js', 'package.json'),
+)
 const templateArgs = [
   'memo',
   '--address',
@@ -19,7 +19,7 @@ const templateArgs = [
   jsClientPkg.name,
   '--default',
   '--force',
-];
+]
 
 // File and folder patterns that should not be overwritten by the template upgrade.
 const unchangedGlobs = [
@@ -36,23 +36,23 @@ const unchangedGlobs = [
   'Cargo.lock',
   '**/pnpm-lock.yaml',
   'pnpm-lock.yaml',
-];
+]
 
 // Prevent CLI arguments from being escaped.
-$.quote = (command) => command;
+$.quote = command => command
 
 // Re-generate the repo from the parent directory.
-cd('..');
-await $`pnpm create solana-program@latest ${templateArgs}`;
+cd('..')
+await $`pnpm create solana-program@latest ${templateArgs}`
 
 // Go back inside the updated repo.
-cd('memo');
+cd('memo')
 
 // Restore files and folders that should not be overwritten.
-await $`git add --all`;
+await $`git add --all`
 for (const glob of unchangedGlobs) {
-  await $`git restore --worktree --staged "${glob}"`;
+  await $`git restore --worktree --staged "${glob}"`
 }
 
 // Re-install dependencies.
-await $`pnpm install`;
+await $`pnpm install`
