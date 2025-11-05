@@ -1,5 +1,5 @@
 import { EstablishedSessionState, useConnection } from '@fogo/sessions-sdk-react'
-import { depositWsolWithSession, withdrawWsolWithSession } from '@solana/spl-stake-pool/src'
+import { depositWsolWithSession, withdrawWsolWithSession } from '@ignitionfi/spl-stake-pool'
 import { STAKE_POOL_ADDRESS } from '../constants.ts'
 import { solToLamports, txDetails } from '../utils.ts'
 
