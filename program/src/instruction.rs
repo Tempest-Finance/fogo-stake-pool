@@ -5,6 +5,7 @@
 #![allow(deprecated)]
 #![allow(clippy::too_many_arguments)]
 
+use spl_token::native_mint;
 use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
@@ -2069,7 +2070,6 @@ fn deposit_sol_internal(
     sol_deposit_authority: Option<&Pubkey>,
     lamports_in: u64,
     minimum_pool_tokens_out: Option<u64>,
-    wsol_accounts: Option<(&Pubkey, &Pubkey)>, // (wsol_account, wsol_transient)
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -2085,10 +2085,6 @@ fn deposit_sol_internal(
     ];
     if let Some(sol_deposit_authority) = sol_deposit_authority {
         accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
-    }
-    if let Some((wsol_account, wsol_transient)) = wsol_accounts {
-        accounts.push(AccountMeta::new(*wsol_account, false));
-        accounts.push(AccountMeta::new(*wsol_transient, false));
     }
     if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
         Instruction {
@@ -2137,7 +2133,6 @@ pub fn deposit_sol(
         None,
         lamports_in,
         None,
-        None,
     )
 }
 
@@ -2171,7 +2166,6 @@ pub fn deposit_sol_with_slippage(
         None,
         lamports_in,
         Some(minimum_pool_tokens_out),
-        None,
     )
 }
 
@@ -2205,7 +2199,6 @@ pub fn deposit_sol_with_authority(
         token_program_id,
         Some(sol_deposit_authority),
         lamports_in,
-        None,
         None,
     )
 }
@@ -2241,7 +2234,6 @@ pub fn deposit_sol_with_authority_and_slippage(
         Some(sol_deposit_authority),
         lamports_in,
         Some(minimum_pool_tokens_out),
-        None,
     )
 }
 
@@ -2692,5 +2684,103 @@ pub fn create_token_metadata(
         accounts,
         data: borsh::to_vec(&StakePoolInstruction::CreateTokenMetadata { name, symbol, uri })
             .unwrap(),
+    }
+}
+
+/// Creates instruction required to deposit wSOL directly
+/// into a stake pool using a session signer.
+pub fn deposit_wsol_with_session(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    withdraw_authority: &Pubkey,
+    reserve_stake: &Pubkey,
+    session_signer: &Pubkey,
+    pool_token_account: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    wsol_token_account: &Pubkey,
+    transient_wsol_account: &Pubkey,
+    program_signer: &Pubkey,
+    payer: &Pubkey,
+    sol_deposit_authority: Option<&Pubkey>,
+    amount: u64,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new_readonly(*session_signer, true),
+        AccountMeta::new(*pool_token_account, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(native_mint::id(), false),
+        AccountMeta::new(*wsol_token_account, false),
+        AccountMeta::new(*transient_wsol_account, false),
+        AccountMeta::new(*program_signer, false),
+        AccountMeta::new_readonly(*payer, true),
+    ];
+
+    if let Some(sol_deposit_authority) = sol_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
+    }
+
+    let data = borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession(amount)).unwrap();
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+/// Creates instruction required to withdraw wSOL directly
+/// from a stake pool using a session signer.
+pub fn withdraw_wsol_with_session(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    withdraw_authority: &Pubkey,
+    session_signer: &Pubkey,
+    burn_from_pool: &Pubkey,
+    reserve_stake: &Pubkey,
+    destination_wsol_account: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    program_signer: &Pubkey,
+    sol_withdraw_authority: Option<&Pubkey>,
+    pool_tokens: u64,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new_readonly(*session_signer, true),
+        AccountMeta::new(*burn_from_pool, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new(*destination_wsol_account, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(native_mint::id(), false),
+        AccountMeta::new(*program_signer, false),
+    ];
+
+    if let Some(sol_withdraw_authority) = sol_withdraw_authority {
+        accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
+    }
+
+    let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession(pool_tokens)).unwrap();
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
     }
 }
