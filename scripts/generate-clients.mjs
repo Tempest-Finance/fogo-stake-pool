@@ -5,7 +5,7 @@ import { createFromRoot } from 'codama'
 import { workingDirectory } from './utils.mjs'
 import 'zx/globals'
 
-// Instanciate Codama.
+// Instantiate Codama.
 const codama = createFromRoot(
   require(path.join(workingDirectory, 'program', 'idl.json')),
 )

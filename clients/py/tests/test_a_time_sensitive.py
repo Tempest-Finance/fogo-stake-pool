@@ -86,7 +86,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
         assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount + \
             stake_rent_exemption
 
-    # DO NOT test decrese additional instruction as it is confirmed NOT to be working as advertised
+    # DO NOT test decrease additional instruction as it is confirmed NOT to be working as advertised
 
     # roll over one epoch and verify we have the balances that we expect
     expected_active_stake_lamports = increase_amount - decrease_amount + minimum_amount + stake_rent_exemption

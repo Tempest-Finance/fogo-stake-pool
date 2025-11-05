@@ -834,7 +834,7 @@ impl Processor {
                 .checked_sub(minimum_reserve_lamports(&meta))
                 .ok_or(StakePoolError::CalculationFailure)?
         } else {
-            msg!("Reserve stake account not in intialized state");
+            msg!("Reserve stake account not in initialized state");
             return Err(StakePoolError::WrongStakeStake.into());
         };
 
@@ -3431,7 +3431,7 @@ impl Processor {
                 return Err(StakePoolError::SolWithdrawalTooLarge.into());
             }
         } else {
-            msg!("Reserve stake account not in intialized state");
+            msg!("Reserve stake account not in initialized state");
             return Err(StakePoolError::WrongStakeStake.into());
         };
 
