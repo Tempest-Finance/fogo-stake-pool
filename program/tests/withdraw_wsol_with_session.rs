@@ -6,9 +6,9 @@ mod helpers;
 use crate::helpers::wsol::setup_with_session_account;
 use spl_stake_pool::instruction::withdraw_wsol_with_session;
 use {
-    fogo_sessions_sdk::{session::SESSION_MANAGER_ID, token::PROGRAM_SIGNER_SEED},
+    fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED,
     helpers::*,
-    solana_program::program_pack::Pack,
+    solana_program::{borsh1::try_from_slice_unchecked, program_pack::Pack},
     solana_program_test::*,
     solana_sdk::{pubkey::Pubkey, signature::Signer, transaction::Transaction},
     spl_stake_pool::id,
@@ -51,6 +51,34 @@ async fn success(token_program_id: Pubkey) {
 
     let (program_signer, _program_signer_bump) =
         Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let initial_reserve_lamports = {
+        let reserve_stake = get_account(
+            &mut context.banks_client,
+            &stake_pool_accounts.reserve_stake.pubkey(),
+        )
+        .await;
+        reserve_stake.lamports
+    };
+
+    let initial_stake_pool_state = {
+        let stake_pool = get_account(
+            &mut context.banks_client,
+            &stake_pool_accounts.stake_pool.pubkey(),
+        )
+        .await;
+        try_from_slice_unchecked::<spl_stake_pool::state::StakePool>(&stake_pool.data).unwrap()
+    };
+
+    let initial_pool_mint_supply = {
+        let pool_mint_account = get_account(
+            &mut context.banks_client,
+            &stake_pool_accounts.pool_mint.pubkey(),
+        )
+        .await;
+        let pool_mint = spl_token::state::Mint::unpack(&pool_mint_account.data).unwrap();
+        pool_mint.supply
+    };
 
     let pool_tokens_to_withdraw = pool_tokens / 2;
 
@@ -109,19 +137,91 @@ async fn success(token_program_id: Pubkey) {
     }
 
     let wsol_balance = get_token_balance(&mut context.banks_client, &wsol_token_account).await;
-    assert!(wsol_balance > 0, "User should have received WSOL tokens");
+    let expected_wsol_min = (pool_tokens_to_withdraw as f64 * 0.95) as u64;
+    assert!(
+        wsol_balance >= expected_wsol_min,
+        "User should have received WSOL tokens: got {}, expected at least {}",
+        wsol_balance,
+        expected_wsol_min
+    );
 
     let remaining_pool_tokens =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    let expected_remaining = pool_tokens - pool_tokens_to_withdraw;
     assert!(
-        remaining_pool_tokens < pool_tokens,
-        "Pool tokens should have been burned"
+        remaining_pool_tokens <= expected_remaining,
+        "Pool tokens should have been burned: remaining {}, expected ~{}",
+        remaining_pool_tokens,
+        expected_remaining
     );
 
-    let session_account = get_account(&mut context.banks_client, &session_signer.pubkey()).await;
+    let manager_fee_balance = get_token_balance(
+        &mut context.banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+
+    let final_pool_mint_supply = {
+        let pool_mint_account = get_account(
+            &mut context.banks_client,
+            &stake_pool_accounts.pool_mint.pubkey(),
+        )
+        .await;
+        let pool_mint = spl_token::state::Mint::unpack(&pool_mint_account.data).unwrap();
+        pool_mint.supply
+    };
+
+    assert!(
+        final_pool_mint_supply < initial_pool_mint_supply,
+        "Pool mint supply should have decreased: initial {}, final {}",
+        initial_pool_mint_supply,
+        final_pool_mint_supply
+    );
+
+    let total_remaining_pool_tokens = remaining_pool_tokens + manager_fee_balance;
     assert_eq!(
-        session_account.owner, SESSION_MANAGER_ID,
-        "Session account should still be owned by SESSION_MANAGER_ID"
+        final_pool_mint_supply, total_remaining_pool_tokens,
+        "Pool token supply should equal total remaining tokens (user + manager fee)"
+    );
+
+    let final_stake_pool_state = {
+        let stake_pool = get_account(
+            &mut context.banks_client,
+            &stake_pool_accounts.stake_pool.pubkey(),
+        )
+        .await;
+        try_from_slice_unchecked::<spl_stake_pool::state::StakePool>(&stake_pool.data).unwrap()
+    };
+
+    assert!(
+        final_stake_pool_state.total_lamports < initial_stake_pool_state.total_lamports,
+        "Stake pool total_lamports should have decreased: initial {}, final {}",
+        initial_stake_pool_state.total_lamports,
+        final_stake_pool_state.total_lamports
+    );
+
+    let final_reserve_lamports = {
+        let reserve_stake = get_account(
+            &mut context.banks_client,
+            &stake_pool_accounts.reserve_stake.pubkey(),
+        )
+        .await;
+        reserve_stake.lamports
+    };
+
+    assert!(
+        final_reserve_lamports < initial_reserve_lamports,
+        "Reserve stake lamports should have decreased: initial {}, final {}",
+        initial_reserve_lamports,
+        final_reserve_lamports
+    );
+
+    let expected_reserve_max = initial_reserve_lamports - wsol_balance + 100_000_000;
+    assert!(
+        final_reserve_lamports <= expected_reserve_max,
+        "Reserve stake should have decreased by approximately WSOL amount: {} lamports, max expected {}",
+        final_reserve_lamports,
+        expected_reserve_max
     );
 
     let wsol_account_result = context
@@ -132,9 +232,19 @@ async fn success(token_program_id: Pubkey) {
 
     if let Some(wsol_account) = wsol_account_result {
         let wsol_token_state = spl_token::state::Account::unpack(&wsol_account.data).unwrap();
-        assert!(
-            wsol_token_state.amount > 0,
-            "WSOL token account should have balance after withdrawal"
+        assert_eq!(
+            wsol_token_state.amount, wsol_balance,
+            "WSOL token account balance should match expected amount"
+        );
+        assert_eq!(
+            wsol_token_state.owner,
+            user.pubkey(),
+            "WSOL token account should be owned by user"
+        );
+        assert_eq!(
+            wsol_token_state.mint,
+            native_mint::id(),
+            "WSOL token account should be for native mint"
         );
     }
 }
