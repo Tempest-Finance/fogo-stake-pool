@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+pub mod wsol;
+
 use {
     borsh::BorshDeserialize,
     solana_program::{
