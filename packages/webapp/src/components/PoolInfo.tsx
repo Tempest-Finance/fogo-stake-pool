@@ -2,7 +2,7 @@
 
 import { BN } from '@coral-xyz/anchor'
 import { useConnection } from '@fogo/sessions-sdk-react'
-import { getStakePoolAccount, StakePool } from '@solana/spl-stake-pool'
+import { getStakePoolAccount, StakePool } from '@ignitionfi/spl-stake-pool'
 import { PublicKey, StakeProgram } from '@solana/web3.js'
 import { useCallback, useState } from 'react'
 import { STAKE_POOL_ADDRESS } from '../constants.ts'
