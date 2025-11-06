@@ -1,19 +1,21 @@
 # Getting Started with Ignition Stake Pool
 
-This guide will help you quickly set up your development environment and start working with the Ignition Stake Pool program.
+This guide will help you quickly set up your development environment and using the Ignition Stake Pool program. 
+Whether you're building a dApp, managing validators, or integrating staking into your application, this guide covers everything you need to get started.
 
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
 
 ### Required Tools
-- **Rust**: `rustc 1.86.0` or later
+
+- **Rust**: Version `1.86.0` or later
 - **Solana CLI**: Version `2.3.4` or later
-- **Node.js**: `22.x` or later
-- **pnpm**: `10.20.0`
+- **Node.js**: Version `22.x` or later
+- **pnpm**: Version `10.20.0` or later
 - **Git**: For cloning the repository
 
-### Install Rust and Solana CLI
+### Installing Tools
 
 ```bash
 # Install Rust
@@ -23,139 +25,80 @@ source ~/.cargo/env
 # Install Solana CLI
 curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
 
-# Verify installation
+# Install Node.js (using nvm recommended)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 22
+nvm use 22
+
+# Install pnpm
+npm install -g pnpm@10.20.0
+
+# Verify installations
+rustc --version
 solana --version
+node --version
+pnpm --version
 ```
 
 ## Quick Setup
 
-### 1. Clone the Repository
+### 1. Clone and Install
 
 ```bash
+# Clone the repository
 git clone https://github.com/tempest-finance/spl-stake-pool.git
-cd tempest-finance/spl-stake-pool
-```
+cd spl-stake-pool
 
-### 2. Install Dependencies
-
-```bash
-# Install JavaScript dependencies
+# Install all dependencies
 pnpm install
-
-# Verify solana version compatibility
-pnpm solana:check
 ```
 
-### 3. Build the Project
+### 2. Build the Project
 
 ```bash
-# Build the program
+# Build the on-chain program
 make build
-# OR
-pnpm programs:build
 
 # Build the CLI tool
 make build/cli
-# OR
-cargo build --bin spl-stake-pool --release
 
 # Build the TypeScript SDK
 pnpm sdk build
-
 ```
 
-### 4. Run Tests
+### 3. Run Tests
 
 ```bash
 # Run all tests
 make test
 
-# Run specific component tests
-pnpm programs:test       # Program tests
-pnpm clients:cli:test    # CLI tests
-pnpm sdk test            # SDK tests
-pnpm clients:py:test     # Python tests
-```
-
-## Your First Stake Pool
-
-### Setup Local Environment
-
-```bash
-# Start local solana validator (in a separate terminal)
-solana-test-validator
-
-# In another terminal, configure CLI for local development
-solana config set --url localhost
-solana config set --keypair ~/.config/fogo/id.json
-
-# Airdrop tokens for testing
-solana airdrop 10
-```
-
-### Create a Stake Pool
-
-```bash
-# Generate a new keypair for the pool
-solana-keygen new --outfile ./my-pool-keypair.json
-
-# Create the stake pool
-./spl-stake-pool create-pool \
-  --pool-keypair ./my-pool-keypair.json \
-  --validator-list-keypair ./my-validator-list.json \
-  --mint-keypair ./my-mint.json \
-  --reserve-keypair ./my-reserve.json \
-  --max-validators 100 \
-  --deposit-fee-numerator 1 \
-  --deposit-fee-denominator 1000 \
-  --withdrawal-fee-numerator 5 \
-  --withdrawal-fee-denominator 1000 \
-  --referral-fee 50
-
-# Or using Make command with default parameters
-make deploy/localnet
-```
-
-### Add Validators to Pool
-
-```bash
-# Add a validator to the pool
-./spl-stake-pool add-validator \
-  --pool-keypair ./my-pool-keypair.json \
-  --validator-vote-account <VALIDATOR_VOTE_PUBKEY>
-```
-
-### Deposit Stake
-
-```bash
-# Create a stake account first
-solana create-stake-account ./stake-account.json 1
-
-# Delegate the stake account to a validator
-solana delegate-stake ./stake-account.json <VALIDATOR_VOTE_PUBKEY>
-
-# Wait for the stake to activate, then deposit into pool
-./spl-stake-pool deposit-stake \
-  --pool ./my-pool-keypair.json \
-  --stake-account ./stake-account.json \
-  --token-receiver <YOUR_TOKEN_ACCOUNT>
+# Or run specific tests
+pnpm programs:test    # Program tests
+pnpm clients:cli:test # CLI tests
+pnpm sdk test         # SDK tests
 ```
 
 ## Using the TypeScript SDK
 
+The TypeScript SDK provides a simple interface for interacting with stake pools. This section covers common operations and patterns.
+
+### Installation
+
+```bash
+npm install @ignitionfi/spl-stake-pool @solana/web3.js
+# or
+pnpm add @ignitionfi/spl-stake-pool @solana/web3.js
+```
+
 ### Basic Setup
 
 ```typescript
+import { Connection, PublicKey, Keypair, clusterApiUrl } from '@solana/web3.js';
 import {
-  Connection,
-  PublicKey,
-  Keypair,
-  clusterApiUrl,
-} from '@solana/web3.js';
-import {
-  StakePoolProgram,
+  getStakePoolAccount,
+  getStakePoolAccounts,
   STAKE_POOL_PROGRAM_ID,
-} from '@solana/spl-stake-pool';
+} from '@ignitionfi/spl-stake-pool';
 
 // Connect to cluster
 const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -166,105 +109,409 @@ const payer = Keypair.fromSecretKey(
 );
 ```
 
-### Find Stake Pools
+### Finding Stake Pools
 
 ```typescript
-// Find all stake pools
-const stakePools = await connection.getProgramAccounts(STAKE_POOL_PROGRAM_ID, {
-  filters: [
-    {
-      dataSize: 555, // StakePool account size
-    },
-  ],
-});
-
-console.log(`Found ${stakePools.length} stake pools`);
-```
-
-### Deposit tokens into Pool
-
-```typescript
-// Find stake pool by address
-const stakePoolAddress = new PublicKey('YOUR_STAKE_POOL_ADDRESS');
-const stakePool = await StakePoolProgram.getStakePoolAccount(
+// Get all stake pools for a program
+const stakePools = await getStakePoolAccounts(
   connection,
-  stakePoolAddress
+  STAKE_POOL_PROGRAM_ID
 );
 
-// Deposit tokens and receive pool tokens
-const lamports = 1_000_000_000; // 1 tokens
-const transaction = StakePoolProgram.depositSol({
-  stakePool: stakePoolAddress,
-  withdrawAuthority: stakePool.account.data.withdrawAuthority,
-  depositAuthority: stakePool.account.data.depositAuthority,
-  reserveStake: stakePool.account.data.reserveStake,
-  lamports,
-  destinationPoolAccount: poolTokenAccount,
-  managerFeeAccount: stakePool.account.data.managerFeeAccount,
-  referralPoolAccount: poolTokenAccount, // Use same account if no referral
-  poolMint: stakePool.account.data.poolMint,
+console.log(`Found ${stakePools?.length || 0} stake pools`);
+
+// Get a specific stake pool
+const stakePoolAddress = new PublicKey('YOUR_STAKE_POOL_ADDRESS');
+const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+console.log('Pool mint:', stakePool.account.data.poolMint.toBase58());
+console.log('Total lamports:', stakePool.account.data.totalLamports.toString());
+```
+
+### Deposit Operations
+
+#### Deposit SOL
+
+```typescript
+import { depositSol } from '@ignitionfi/spl-stake-pool';
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+
+// Deposit 1 SOL into the stake pool
+const lamports = 1_000_000_000; // 1 SOL in lamports
+const { instructions, signers } = await depositSol(
+  connection,
+  stakePoolAddress,
+  payer.publicKey, // SOL comes from this account
+  lamports
+);
+
+// Create and send transaction
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer, ...signers],
+  { commitment: 'confirmed' }
+);
+
+console.log('Deposit successful:', signature);
+```
+
+#### Deposit Existing Stake Account
+
+```typescript
+import { depositStake } from '@ignitionfi/spl-stake-pool';
+
+// Deposit an existing stake account into the pool
+const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS');
+const stakeAccount = new PublicKey('YOUR_STAKE_ACCOUNT');
+
+const { instructions, signers } = await depositStake(
+  connection,
+  stakePoolAddress,
+  payer.publicKey, // Current stake authority
+  validatorVoteAccount,
+  stakeAccount
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer, ...signers]
+);
+
+console.log('Stake deposited:', signature);
+```
+
+### Withdraw Operations
+
+#### Withdraw SOL
+
+```typescript
+import { withdrawSol } from '@ignitionfi/spl-stake-pool';
+
+// Withdraw 0.5 pool tokens worth of SOL
+const poolTokenAmount = 0.5;
+const { instructions, signers } = await withdrawSol(
+  connection,
+  stakePoolAddress,
+  payer.publicKey, // Pool token owner
+  payer.publicKey, // SOL receiver
+  poolTokenAmount
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer, ...signers]
+);
+
+console.log('Withdrawal successful:', signature);
+```
+
+#### Withdraw Stake
+
+```typescript
+import { withdrawStake } from '@ignitionfi/spl-stake-pool';
+
+// Withdraw stake from the pool
+const poolTokenAmount = 1.0;
+const { instructions, signers, stakeReceiver } = await withdrawStake(
+  connection,
+  stakePoolAddress,
+  payer.publicKey, // Pool token owner
+  poolTokenAmount
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer, ...signers]
+);
+
+console.log('Stake withdrawn to:', stakeReceiver?.toBase58());
+console.log('Transaction:', signature);
+```
+
+### Session-Based Operations (Gasless Transactions)
+
+The SDK supports session-based operations for gasless transactions using the Fogo Sessions SDK. 
+This is particularly useful for web applications where you want to provide a seamless user experience.
+
+#### Setup with Fogo Sessions
+
+```typescript
+import { useSession } from '@fogo/sessions-sdk-react';
+import {
+  depositWsolWithSession,
+  withdrawWsolWithSession,
+} from '@ignitionfi/spl-stake-pool';
+
+// In your React component
+function StakePoolComponent() {
+  const { sessionState } = useSession();
+
+  // Session must be established
+  if (sessionState.status !== 'established') {
+    return <div>Connecting...</div>;
+  }
+
+  return <StakeInterface sessionState={sessionState} />;
+}
+```
+
+#### Deposit with Session
+
+```typescript
+import { depositWsolWithSession } from '@ignitionfi/spl-stake-pool';
+
+async function depositWithSession(
+  connection,
+  stakePoolAddress,
+  sessionState,
+  amount
+) {
+  const lamports = amount * 1_000_000_000; // Convert SOL to lamports
+
+  // Create deposit instructions using session
+  const { instructions } = await depositWsolWithSession(
+    connection,
+    stakePoolAddress,
+    sessionState.sessionPublicKey, // Session signer
+    sessionState.walletPublicKey, // User's wallet
+    lamports,
+    undefined, // destinationTokenAccount (auto-created)
+    undefined, // referrerTokenAccount (optional)
+    undefined, // depositAuthority (optional)
+    sessionState.payer // Session payer
+  );
+
+  // Send using session
+  const result = await sessionState.sendTransaction(instructions);
+
+  console.log('Signature:', result.signature);
+  return result;
+}
+```
+
+#### Withdraw with Session
+
+```typescript
+import { withdrawWsolWithSession } from '@ignitionfi/spl-stake-pool';
+
+async function withdrawWithSession(
+  connection,
+  stakePoolAddress,
+  sessionState,
+  poolTokenAmount
+) {
+  // Create withdraw instructions using session
+  const { instructions } = await withdrawWsolWithSession(
+    connection,
+    stakePoolAddress,
+    sessionState.sessionPublicKey, // Session signer
+    sessionState.walletPublicKey, // User's wallet
+    poolTokenAmount
+  );
+
+  // Send using session
+  const result = await sessionState.sendTransaction(instructions);
+
+  console.log('Signature:', result.signature);
+  return result;
+}
+```
+
+### Validator Management Operations
+
+#### Add Validator to Pool
+
+```typescript
+import { addValidatorToPool } from '@ignitionfi/spl-stake-pool';
+
+const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS');
+
+const { instructions } = await addValidatorToPool(
+  connection,
+  stakePoolAddress,
+  validatorVoteAccount
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer] // Must be pool staker
+);
+
+console.log('Validator added:', signature);
+```
+
+#### Remove Validator from Pool
+
+```typescript
+import { removeValidatorFromPool } from '@ignitionfi/spl-stake-pool';
+
+const { instructions } = await removeValidatorFromPool(
+  connection,
+  stakePoolAddress,
+  validatorVoteAccount
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer] // Must be pool staker
+);
+
+console.log('Validator removed:', signature);
+```
+
+#### Increase Validator Stake
+
+```typescript
+import { increaseValidatorStake } from '@ignitionfi/spl-stake-pool';
+
+const lamports = 5_000_000_000; // 5 SOL to add to validator
+
+const { instructions } = await increaseValidatorStake(
+  connection,
+  stakePoolAddress,
+  validatorVoteAccount,
+  lamports
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer] // Must be pool staker
+);
+
+console.log('Validator stake increased:', signature);
+```
+
+#### Decrease Validator Stake
+
+```typescript
+import { decreaseValidatorStake } from '@ignitionfi/spl-stake-pool';
+
+const lamports = 2_000_000_000; // 2 SOL to remove from validator
+
+const { instructions } = await decreaseValidatorStake(
+  connection,
+  stakePoolAddress,
+  validatorVoteAccount,
+  lamports
+);
+
+const transaction = new Transaction().add(...instructions);
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [payer] // Must be pool staker
+);
+
+console.log('Validator stake decreased:', signature);
+```
+
+### Pool Maintenance and Information
+
+#### Update Stake Pool
+
+```typescript
+import { updateStakePool } from '@ignitionfi/spl-stake-pool';
+
+// Update pool after epoch change
+const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+
+const { updateListInstructions, finalInstructions } = await updateStakePool(
+  connection,
+  stakePool,
+  false // noMerge flag
+);
+
+// Send update list instructions first (may need multiple transactions)
+for (const instruction of updateListInstructions) {
+  const tx = new Transaction().add(instruction);
+  await sendAndConfirmTransaction(connection, tx, [payer]);
+}
+
+// Send final instructions
+const finalTx = new Transaction().add(...finalInstructions);
+await sendAndConfirmTransaction(connection, finalTx, [payer]);
+
+console.log('Stake pool updated');
+```
+
+#### Get Stake Pool Information
+
+```typescript
+import { stakePoolInfo } from '@ignitionfi/spl-stake-pool';
+
+// Get comprehensive pool information
+const info = await stakePoolInfo(connection, stakePoolAddress);
+
+console.log('Pool address:', info.address);
+console.log('Manager:', info.manager);
+console.log('Total lamports:', info.totalLamports);
+console.log('Pool token supply:', info.poolTokenSupply);
+console.log('Current validators:', info.details.currentNumberOfValidators);
+console.log('Max validators:', info.details.maxNumberOfValidators);
+console.log('Update required:', info.details.updateRequired);
+
+// List all validators
+info.validatorList.forEach((validator, index) => {
+  console.log(`Validator ${index + 1}:`, validator.voteAccountAddress);
+  console.log('  Active stake:', validator.activeStakeLamports);
+  console.log('  Transient stake:', validator.transientStakeLamports);
 });
-
-await connection.sendTransaction(transaction, [payer]);
 ```
-
-## Using the Web Application
-
-### Start Development Server
-
-```bash
-pnpm start
-```
-
-- Connecting wallets via Fogo Sessions
-- Viewing stake pool information
-- Depositing and withdrawing tokens
-- Managing stake positions
-
-### Key Features
-- **Wallet Integration**: Seamless connection through Fogo Sessions SDK
-- **Real-time Data**: Live stake pool metrics and APY calculations
-- **Responsive Design**: Works on desktop and mobile devices
-- **Transaction History**: Track your stake pool interactions
 
 ## Next Steps
 
-### Development
+Now that you've set up your development environment and created your first stake pool, explore these resources to deepen your understanding:
 
-1. **Explore the Architecture**: Read the [Architecture Guide](./architecture.md) to understand the system design
-2. **Deep Dive into the Program**: Check out the [Program Guide](./program-guide.md) for detailed instruction documentation
-3. **Master the CLI**: Review the [CLI Reference](./cli-reference.md) for advanced operations
-4. **SDK Integration**: Follow the [API Reference](./api-reference.md#typescript-sdk) for building applications
+### Learn More
 
-### Deployment
+- **[Architecture Guide](./architecture.md)**: Understand the system design and data structures
+- **[Program Guide](./program-guide.md)**: Detailed documentation of all on-chain instructions
+- **[CLI Reference](./cli-reference.md)**: Complete command-line tool documentation
+- **[API Reference](./api-reference.md)**: Full TypeScript SDK API documentation
 
-1. **Test on Devnet**: Deploy your pool to FOGO devnet for testing
-2. **Security Review**: Ensure proper fee settings and validator selection
-3. **Mainnet Deployment**: Follow the [Deployment Guide](./deployment.md) for production deployment
+### Deploy to Production
 
-### Community
+- **[Deployment Guide](./deployment.md)**: Step-by-step guide for deploying to testnet and mainnet
+- **Security**: Review fee settings and validator selection before mainnet deployment
+- **Monitoring**: Set up alerts and health checks for your stake pool
 
-- **Join Discord**: Connect with other developers in the Discord
-- **Follow Updates**: Watch the repository for new features and security updates
-- **Contribute**: Submit issues and pull requests to improve the codebase
+### Get Help
 
-## Common Issues
+- **Issues**: Report bugs at [GitHub Issues](https://github.com/tempest-finance/spl-stake-pool/issues)
+- **Community**: Join the Discord for developer support
+- **Contributing**: Submit pull requests to improve the codebase
 
-### Build Failures
-- Ensure you're using the correct Rust nightly version: `nightly-2025-02-16`
-- Check Solana CLI version matches exactly: `2.3.4`
-- Clear cargo cache: `cargo clean` if encountering link errors
+## Troubleshooting
 
-### Test Failures
-- Ensure local validator is running for integration tests
-- Check that all dependencies are installed: `pnpm install`
-- Verify network connectivity for devnet/testnet tests
+### Transaction Errors
 
-### Transaction Failures
-- Ensure sufficient tokens balance for rent and fees
-- Check stake account activation status before operations
-- Verify validator vote accounts are active and not delinquent
+**"Insufficient funds" error:**
+- Check your SOL balance: `solana balance`
+- Account for rent exemption (≈0.00203 SOL per stake account)
+- Ensure you have enough for transaction fees
+
+**"Stake account not active" error:**
+- Wait for stake activation (usually 1-2 epochs)
+- Check stake status: `solana stake-account <STAKE_ADDRESS>`
+
+**"Validator not found" error:**
+- Verify the validator is in the pool's validator list
+- Check validator vote account is active: `solana validators`
 
 ---
 
-You're now ready to start building with Ignition Stake Pool! For detailed API documentation and advanced usage patterns, continue with the other guides in this documentation.
+You're now ready to build with Ignition Stake Pool! For detailed API documentation and advanced patterns, explore the other guides in this documentation.
