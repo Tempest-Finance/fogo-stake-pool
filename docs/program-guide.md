@@ -660,4 +660,5 @@ pub enum StakePoolError {
 - Diversify across multiple high-performing validators
 - Monitor validator health and commission rates
 
-This comprehensive guide covers all aspects of the Ignition Stake Pool program. For implementation examples and integration patterns, see the [API Reference](./api-reference.md#typescript-sdk) and [API Reference](./api-reference.md).
+This comprehensive guide covers all aspects of the Ignition Stake Pool program. 
+For implementation examples and integration patterns, see the [API Reference](./api-reference.md#typescript-sdk-api) and [API Reference](./api-reference.md).
