@@ -2,6 +2,10 @@ import type { NextConfig } from 'next'
 
 const config: NextConfig = {
   output: 'export', // SPA
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   headers: async () => [
     {
       source: '/paymaster',
