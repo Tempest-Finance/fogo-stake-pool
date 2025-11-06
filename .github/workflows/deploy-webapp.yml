@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - front
     paths:
       - 'packages/webapp/**'
       - 'packages/sdk/**'
