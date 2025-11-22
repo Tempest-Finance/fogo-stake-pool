@@ -9,7 +9,7 @@ version = "v1"
 name = "Deposit"
 max_gas_spend = 200000
 
-# (Optional) Create associated token account (discriminator byte = 1)
+# (Optional) Create associated token account (discriminator 1)
 [[domains.tx_variations.instructions]]
 program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 required = false
@@ -17,6 +17,11 @@ required = false
 start_byte = 0
 data_type = "U8"
 constraint = { EqualTo = [{ U8 = 1 }] }
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
 
 # DepositWsolWithSession (discriminator 27)
 [[domains.tx_variations.instructions]]
@@ -32,15 +37,6 @@ constraint = { EqualTo = [{ U8 = 27 }] }
 version = "v1"
 name = "Withdraw"
 max_gas_spend = 200000
-
-# (Optional) Create associated token account (discriminator byte = 1)
-[[domains.tx_variations.instructions]]
-program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-required = false
-[[domains.tx_variations.instructions.data]]
-start_byte = 0
-data_type = "U8"
-constraint = { EqualTo = [{ U8 = 1 }] }
 
 # WithdrawWsolWithSession (discriminator 28)
 [[domains.tx_variations.instructions]]
