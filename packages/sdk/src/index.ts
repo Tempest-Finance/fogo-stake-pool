@@ -318,12 +318,11 @@ export async function depositWsolWithSession(
     )
   }
 
-  const stakePoolAccount = await getStakePoolAccount(
-    connection,
-    stakePoolAddress,
-  )
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
   const stakePool = stakePoolAccount.account.data
+
+  // stakePool.tokenProgramId
 
   const instructions: TransactionInstruction[] = []
 
@@ -335,7 +334,7 @@ export async function depositWsolWithSession(
     )
     instructions.push(
       createAssociatedTokenAccountIdempotentInstruction(
-        signerOrSession,
+        payer ?? signerOrSession,
         associatedAddress,
         userPubkey,
         stakePool.poolMint,
