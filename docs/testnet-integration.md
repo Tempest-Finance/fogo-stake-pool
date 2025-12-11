@@ -22,6 +22,8 @@ SOL Deposit Fee: 0/0 of deposit amount
 
 ## SDK integration
 
+See [Getting Started](./getting-started.md#using-the-typescript-sdk) for full documentation.
+
 ```bash
 npm install @ignitionfi/spl-stake-pool
 ```
