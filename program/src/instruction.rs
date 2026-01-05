@@ -2733,7 +2733,7 @@ pub fn deposit_wsol_with_session(
         AccountMeta::new(*wsol_token_account, false),
         AccountMeta::new(*transient_wsol_account, false),
         AccountMeta::new(*program_signer, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
     ];
 
     if let Some(sol_deposit_authority) = sol_deposit_authority {
