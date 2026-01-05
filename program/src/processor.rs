@@ -3403,6 +3403,14 @@ impl Processor {
         let user_pubkey =
             Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
 
+        // Verify burn_from_pool_info is owned by the user
+        let burn_from_pool_data =
+            spl_token::state::Account::unpack(&burn_from_pool_info.data.borrow())?;
+        if burn_from_pool_data.owner != user_pubkey {
+            msg!("`burn_from_pool` is not owned by the session user");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
         // Verify destination_account_info is a valid wSOL token account owned by the user
         // This is more flexible than requiring the ATA specifically
         let destination_token_data =
