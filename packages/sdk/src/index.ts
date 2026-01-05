@@ -295,6 +295,7 @@ export async function depositWsolWithSession(
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
   lamports: number,
+  minimumPoolTokensOut: number = 0,
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
   depositAuthority?: PublicKey,
@@ -368,10 +369,10 @@ export async function depositWsolWithSession(
       managerFeeAccount: stakePool.managerFeeAccount,
       referralPoolAccount: referrerTokenAccount ?? destinationTokenAccount,
       poolMint: stakePool.poolMint,
-      lamports,
+      lamportsIn: lamports,
+      minimumPoolTokensOut,
       withdrawAuthority,
       depositAuthority,
-
       wsolMint: NATIVE_MINT,
       wsolTokenAccount,
       wsolTransientAccount,
@@ -833,6 +834,7 @@ export async function withdrawWsolWithSession(
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
   amount: number,
+  minimumLamportsOut: number = 0,
   solWithdrawAuthority?: PublicKey,
 ) {
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
@@ -889,7 +891,8 @@ export async function withdrawWsolWithSession(
       solWithdrawAuthority,
       wsolMint: NATIVE_MINT,
       programSigner,
-      poolTokens,
+      poolTokensIn: poolTokens,
+      minimumLamportsOut,
     }),
   )
 

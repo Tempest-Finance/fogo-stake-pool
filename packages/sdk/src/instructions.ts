@@ -214,14 +214,16 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 27,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
+      BufferLayout.ns64('lamportsIn'),
+      BufferLayout.ns64('minimumPoolTokensOut'),
     ]),
   },
   WithdrawWsolWithSession: {
     index: 28,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokens'),
+      BufferLayout.ns64('poolTokensIn'),
+      BufferLayout.ns64('minimumLamportsOut'),
     ]),
   },
 })
@@ -383,7 +385,8 @@ export type WithdrawWsolWithSessionParams = {
   solWithdrawAuthority?: PublicKey
   wsolMint: PublicKey
   programSigner: PublicKey
-  poolTokens: number
+  poolTokensIn: number
+  minimumLamportsOut: number
 }
 
 /**
@@ -954,7 +957,7 @@ export class StakePoolInstruction {
   /**
    * Creates a transaction instruction to deposit WSOL into a stake pool.
    */
-  static depositWsolWithSession(params: DepositSolParams & {
+  static depositWsolWithSession(params: Omit<DepositSolParams, 'lamports'> & {
     wsolMint: PublicKey
     wsolTokenAccount: PublicKey
     wsolTransientAccount: PublicKey
@@ -962,9 +965,14 @@ export class StakePoolInstruction {
     tokenProgramId: PublicKey
     programId: PublicKey
     payer?: PublicKey
+    lamportsIn: number
+    minimumPoolTokensOut: number
   }): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DepositWsolWithSession
-    const data = encodeData(type, { lamports: params.lamports })
+    const data = encodeData(type, {
+      lamportsIn: params.lamportsIn,
+      minimumPoolTokensOut: params.minimumPoolTokensOut,
+    })
 
     const keys = [
       { pubkey: params.stakePool, isSigner: false, isWritable: true },
@@ -1104,7 +1112,10 @@ export class StakePoolInstruction {
     params: WithdrawWsolWithSessionParams,
   ): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawWsolWithSession
-    const data = encodeData(type, { poolTokens: params.poolTokens })
+    const data = encodeData(type, {
+      poolTokensIn: params.poolTokensIn,
+      minimumLamportsOut: params.minimumLamportsOut,
+    })
 
     const keys = [
       { pubkey: params.stakePool, isSigner: false, isWritable: true },
