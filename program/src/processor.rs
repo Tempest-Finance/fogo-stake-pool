@@ -2665,9 +2665,7 @@ impl Processor {
         use fogo_sessions_sdk::token::instruction::transfer_checked;
         use fogo_sessions_sdk::{session::Session, token::PROGRAM_SIGNER_SEED};
         use solana_program::program_pack::Pack;
-        use spl_associated_token_account::{
-            get_associated_token_address_with_program_id, tools::account::create_pda_account,
-        };
+        use spl_associated_token_account::tools::account::create_pda_account;
 
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2708,14 +2706,14 @@ impl Processor {
         let user_pubkey =
             Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
 
-        let expected_wsol_ata = get_associated_token_address_with_program_id(
-            &user_pubkey,
-            wsol_mint_info.key,
-            token_program_info.key,
-        );
-
-        if *wsol_token_info.key != expected_wsol_ata {
-            msg!("`wsol_token` is not the expected ATA for the user");
+        // Verify wsol_token_info is a valid wSOL token account owned by the user
+        let wsol_token_data = spl_token::state::Account::unpack(&wsol_token_info.data.borrow())?;
+        if wsol_token_data.mint != spl_token::native_mint::id() {
+            msg!("`wsol_token` is not a wSOL token account");
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if wsol_token_data.owner != user_pubkey {
+            msg!("`wsol_token` is not owned by the session user");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -2802,12 +2800,7 @@ impl Processor {
         // Refund rent to payer
         let rent_lamports = rent
             .minimum_balance(spl_token::state::Account::LEN)
-            .max(1)
-            .saturating_sub(if wsol_transient_info.lamports() > 0 {
-                wsol_transient_info.lamports()
-            } else {
-                0
-            });
+            .max(1);
 
         invoke_signed(
             &system_instruction::transfer(program_signer_info.key, payer_info.key, rent_lamports),
@@ -3370,7 +3363,7 @@ impl Processor {
         minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         use fogo_sessions_sdk::session::Session;
-        use spl_associated_token_account::get_associated_token_address_with_program_id;
+        use solana_program::program_pack::Pack;
 
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3410,14 +3403,16 @@ impl Processor {
         let user_pubkey =
             Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
 
-        let expected_wsol_ata = get_associated_token_address_with_program_id(
-            &user_pubkey,
-            wsol_mint_info.key,
-            token_program_info.key,
-        );
-
-        if *destination_account_info.key != expected_wsol_ata {
-            msg!("`destination_account` is not the user's ATA for WSOL");
+        // Verify destination_account_info is a valid wSOL token account owned by the user
+        // This is more flexible than requiring the ATA specifically
+        let destination_token_data =
+            spl_token::state::Account::unpack(&destination_account_info.data.borrow())?;
+        if destination_token_data.mint != spl_token::native_mint::id() {
+            msg!("`destination_account` is not a wSOL token account");
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if destination_token_data.owner != user_pubkey {
+            msg!("`destination_account` is not owned by the session user");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -4160,13 +4155,29 @@ impl Processor {
                     Some(minimum_lamports_out),
                 )
             }
-            StakePoolInstruction::DepositWsolWithSession(lamports) => {
+            StakePoolInstruction::DepositWsolWithSession {
+                lamports_in,
+                minimum_pool_tokens_out,
+            } => {
                 msg!("Instruction: DepositWsolWithSession");
-                Self::process_deposit_wsol_with_session(program_id, accounts, lamports, None)
+                Self::process_deposit_wsol_with_session(
+                    program_id,
+                    accounts,
+                    lamports_in,
+                    Some(minimum_pool_tokens_out),
+                )
             }
-            StakePoolInstruction::WithdrawWsolWithSession(amount) => {
+            StakePoolInstruction::WithdrawWsolWithSession {
+                pool_tokens_in,
+                minimum_lamports_out,
+            } => {
                 msg!("Instruction: WithdrawWsolWithSession");
-                Self::process_withdraw_wsol_with_session(program_id, accounts, amount, None)
+                Self::process_withdraw_wsol_with_session(
+                    program_id,
+                    accounts,
+                    pool_tokens_in,
+                    Some(minimum_lamports_out),
+                )
             }
         }
     }
