@@ -2831,7 +2831,9 @@ impl Processor {
                 return Err(ProgramError::InvalidAccountData);
             }
 
-            let ata_rent = rent.minimum_balance(spl_token::state::Account::LEN);
+            let ata_rent = rent
+                .minimum_balance(spl_token::state::Account::LEN)
+                .saturating_sub(dest_user_pool_info.lamports());
 
             if deposit_lamports < ata_rent {
                 msg!(
@@ -3497,17 +3499,21 @@ impl Processor {
                 return Err(ProgramError::InvalidAccountData);
             }
 
-            let ata_rent = rent.minimum_balance(spl_token::state::Account::LEN);
+            let ata_rent = rent
+                .minimum_balance(spl_token::state::Account::LEN)
+                .saturating_sub(destination_account_info.lamports());
 
-            // Transfer rent from payer to program_signer for ATA creation
-            invoke(
-                &system_instruction::transfer(payer_info.key, program_signer_info.key, ata_rent),
-                &[
-                    payer_info.clone(),
-                    program_signer_info.clone(),
-                    system_program_info.clone(),
-                ],
-            )?;
+            // Transfer rent from payer to program_signer for ATA creation (only if needed)
+            if ata_rent > 0 {
+                invoke(
+                    &system_instruction::transfer(payer_info.key, program_signer_info.key, ata_rent),
+                    &[
+                        payer_info.clone(),
+                        program_signer_info.clone(),
+                        system_program_info.clone(),
+                    ],
+                )?;
+            }
 
             invoke_signed(
                 &spl_associated_token_account::instruction::create_associated_token_account_idempotent(
@@ -3527,16 +3533,18 @@ impl Processor {
                 &[program_signer_seeds],
             )?;
 
-            // Refund ATA rent back to payer
-            invoke_signed(
-                &system_instruction::transfer(program_signer_info.key, payer_info.key, ata_rent),
-                &[
-                    program_signer_info.clone(),
-                    payer_info.clone(),
-                    system_program_info.clone(),
-                ],
-                &[program_signer_seeds],
-            )?;
+            // Refund ATA rent back to payer (only if we transferred any)
+            if ata_rent > 0 {
+                invoke_signed(
+                    &system_instruction::transfer(program_signer_info.key, payer_info.key, ata_rent),
+                    &[
+                        program_signer_info.clone(),
+                        payer_info.clone(),
+                        system_program_info.clone(),
+                    ],
+                    &[program_signer_seeds],
+                )?;
+            }
         }
 
         // Now verify destination_account_info is a valid wSOL token account owned by the user
