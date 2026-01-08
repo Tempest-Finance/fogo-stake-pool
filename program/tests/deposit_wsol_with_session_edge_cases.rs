@@ -875,3 +875,127 @@ async fn success_transient_rent_refunded(token_program_id: Pubkey) {
         expected_loss_max
     );
 }
+
+#[test_case(spl_token::id(); "token")]
+#[tokio::test]
+async fn success_different_payer_from_fee_payer(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, session_signer, _pool_tokens) =
+        setup_with_session_account(token_program_id).await;
+
+    let (transient_wsol_pda, _) =
+        Pubkey::find_program_address(&[TRANSIENT_WSOL_SEED, user.pubkey().as_ref()], &id());
+
+    let wsol_token_account =
+        spl_associated_token_account::get_associated_token_address_with_program_id(
+            &user.pubkey(),
+            &native_mint::id(),
+            &spl_token::id(),
+        );
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_associated_token_account::instruction::create_associated_token_account(
+                &context.payer.pubkey(),
+                &user.pubkey(),
+                &native_mint::id(),
+                &spl_token::id(),
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let different_payer = Keypair::new();
+    transfer(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &different_payer.pubkey(),
+        10_000_000_000,
+    )
+    .await;
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::approve_checked(
+                &spl_token::id(),
+                &wsol_token_account,
+                &native_mint::id(),
+                &session_signer.pubkey(),
+                &user.pubkey(),
+                &[],
+                TEST_STAKE_AMOUNT,
+                native_mint::DECIMALS,
+            )
+            .unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &user],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    transfer(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &wsol_token_account,
+        TEST_STAKE_AMOUNT,
+    )
+    .await;
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::sync_native(&spl_token::id(), &wsol_token_account).unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let instruction = deposit_wsol_with_session(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &session_signer.pubkey(),
+        &pool_token_account,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &wsol_token_account,
+        &transient_wsol_pda,
+        &program_signer,
+        &different_payer.pubkey(),
+        None,
+        TEST_STAKE_AMOUNT,
+        0,
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &session_signer, &different_payer],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .expect("Deposit with different payer should succeed");
+
+    assert!(
+        get_token_balance(&mut context.banks_client, &pool_token_account).await > 0,
+        "User should have received pool tokens"
+    );
+}
