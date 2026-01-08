@@ -3,13 +3,14 @@
 
 mod helpers;
 
-use crate::helpers::wsol::{setup_with_session_account, TRANSIENT_WSOL_SEED};
+use crate::helpers::wsol::{setup_with_session_account, setup_with_session_account_no_ata, TRANSIENT_WSOL_SEED};
 use spl_stake_pool::instruction::deposit_wsol_with_session;
 use {
     fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED,
     helpers::*,
     solana_program::{
-        borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
+        borsh1::try_from_slice_unchecked, instruction::InstructionError, program_pack::Pack,
+        pubkey::Pubkey,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -1005,5 +1006,448 @@ async fn success_different_payer_from_fee_payer(token_program_id: Pubkey) {
     assert!(
         get_token_balance(&mut context.banks_client, &pool_token_account).await > 0,
         "User should have received pool tokens"
+    );
+}
+
+/// Test on-chain ATA creation when pool token ATA doesn't exist
+#[test_case(spl_token::id(); "token")]
+#[tokio::test]
+async fn success_onchain_ata_creation(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, session_signer) =
+        setup_with_session_account_no_ata(token_program_id).await;
+
+    let (transient_wsol_pda, _) =
+        Pubkey::find_program_address(&[TRANSIENT_WSOL_SEED, user.pubkey().as_ref()], &id());
+
+    let wsol_token_account =
+        spl_associated_token_account::get_associated_token_address_with_program_id(
+            &user.pubkey(),
+            &native_mint::id(),
+            &spl_token::id(),
+        );
+
+    // Create WSOL ATA for user
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_associated_token_account::instruction::create_associated_token_account(
+                &context.payer.pubkey(),
+                &user.pubkey(),
+                &native_mint::id(),
+                &spl_token::id(),
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Approve session signer as delegate
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::approve_checked(
+                &spl_token::id(),
+                &wsol_token_account,
+                &native_mint::id(),
+                &session_signer.pubkey(),
+                &user.pubkey(),
+                &[],
+                TEST_STAKE_AMOUNT,
+                native_mint::DECIMALS,
+            )
+            .unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &user],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Fund WSOL account
+    transfer(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &wsol_token_account,
+        TEST_STAKE_AMOUNT,
+    )
+    .await;
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::sync_native(&spl_token::id(), &wsol_token_account).unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Verify pool token ATA does NOT exist before deposit
+    let ata_before = context
+        .banks_client
+        .get_account(pool_token_account)
+        .await
+        .unwrap();
+    assert!(
+        ata_before.is_none(),
+        "Pool token ATA should NOT exist before deposit"
+    );
+
+    let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let instruction = deposit_wsol_with_session(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &session_signer.pubkey(),
+        &pool_token_account,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &wsol_token_account,
+        &transient_wsol_pda,
+        &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
+        None,
+        TEST_STAKE_AMOUNT,
+        0,
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &session_signer],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .expect("Deposit with on-chain ATA creation should succeed");
+
+    // Verify pool token ATA was created and has tokens
+    let ata_after = context
+        .banks_client
+        .get_account(pool_token_account)
+        .await
+        .unwrap();
+    assert!(
+        ata_after.is_some(),
+        "Pool token ATA should exist after deposit"
+    );
+
+    let pool_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert!(
+        pool_token_balance > 0,
+        "User should have received pool tokens"
+    );
+
+    // ATA rent should have been deducted from deposit
+    // With ATA rent ~0.002 SOL, user should receive slightly fewer pool tokens
+    let ata_rent = context
+        .banks_client
+        .get_rent()
+        .await
+        .unwrap()
+        .minimum_balance(spl_token::state::Account::LEN);
+
+    // Pool tokens should be less than if no ATA creation was needed
+    // (deposit_amount - ata_rent) worth of pool tokens
+    let expected_max_tokens = TEST_STAKE_AMOUNT - ata_rent;
+    assert!(
+        pool_token_balance <= expected_max_tokens,
+        "Pool tokens ({}) should be reduced by ATA rent cost",
+        pool_token_balance
+    );
+}
+
+/// Test deposit fails when amount is less than ATA rent (for first deposit)
+#[test_case(spl_token::id(); "token")]
+#[tokio::test]
+async fn fail_deposit_less_than_ata_rent(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, session_signer) =
+        setup_with_session_account_no_ata(token_program_id).await;
+
+    let (transient_wsol_pda, _) =
+        Pubkey::find_program_address(&[TRANSIENT_WSOL_SEED, user.pubkey().as_ref()], &id());
+
+    let wsol_token_account =
+        spl_associated_token_account::get_associated_token_address_with_program_id(
+            &user.pubkey(),
+            &native_mint::id(),
+            &spl_token::id(),
+        );
+
+    // Create WSOL ATA for user
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_associated_token_account::instruction::create_associated_token_account(
+                &context.payer.pubkey(),
+                &user.pubkey(),
+                &native_mint::id(),
+                &spl_token::id(),
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Get ATA rent to create a deposit that's too small
+    let ata_rent = context
+        .banks_client
+        .get_rent()
+        .await
+        .unwrap()
+        .minimum_balance(spl_token::state::Account::LEN);
+
+    // Deposit amount less than ATA rent
+    let small_deposit = ata_rent - 1;
+
+    // Approve session signer as delegate
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::approve_checked(
+                &spl_token::id(),
+                &wsol_token_account,
+                &native_mint::id(),
+                &session_signer.pubkey(),
+                &user.pubkey(),
+                &[],
+                small_deposit,
+                native_mint::DECIMALS,
+            )
+            .unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &user],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Fund WSOL account with small amount
+    transfer(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &wsol_token_account,
+        small_deposit,
+    )
+    .await;
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::sync_native(&spl_token::id(), &wsol_token_account).unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let instruction = deposit_wsol_with_session(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &session_signer.pubkey(),
+        &pool_token_account,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &wsol_token_account,
+        &transient_wsol_pda,
+        &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
+        None,
+        small_deposit,
+        0,
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &session_signer],
+        context.last_blockhash,
+    );
+
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            assert_eq!(
+                error_index,
+                StakePoolError::DepositTooSmall as u32,
+                "Expected DepositTooSmall error"
+            );
+        }
+        _ => panic!("Expected DepositTooSmall error, got: {:?}", error),
+    }
+}
+
+/// Test on-chain ATA creation with deposit slightly more than ATA rent
+#[test_case(spl_token::id(); "token")]
+#[tokio::test]
+async fn success_deposit_slightly_more_than_ata_rent(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, session_signer) =
+        setup_with_session_account_no_ata(token_program_id).await;
+
+    let (transient_wsol_pda, _) =
+        Pubkey::find_program_address(&[TRANSIENT_WSOL_SEED, user.pubkey().as_ref()], &id());
+
+    let wsol_token_account =
+        spl_associated_token_account::get_associated_token_address_with_program_id(
+            &user.pubkey(),
+            &native_mint::id(),
+            &spl_token::id(),
+        );
+
+    // Create WSOL ATA for user
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_associated_token_account::instruction::create_associated_token_account(
+                &context.payer.pubkey(),
+                &user.pubkey(),
+                &native_mint::id(),
+                &spl_token::id(),
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Get ATA rent - deposit slightly more to get at least 1 pool token
+    let ata_rent = context
+        .banks_client
+        .get_rent()
+        .await
+        .unwrap()
+        .minimum_balance(spl_token::state::Account::LEN);
+
+    // Deposit ATA rent + enough to get 1 pool token (at least 1 lamport effectively deposited)
+    // Use 1 SOL extra to ensure we get pool tokens
+    let deposit_amount = ata_rent + 1_000_000_000;
+
+    // Approve session signer as delegate
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::approve_checked(
+                &spl_token::id(),
+                &wsol_token_account,
+                &native_mint::id(),
+                &session_signer.pubkey(),
+                &user.pubkey(),
+                &[],
+                deposit_amount,
+                native_mint::DECIMALS,
+            )
+            .unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &user],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    // Fund WSOL account
+    transfer(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &wsol_token_account,
+        deposit_amount,
+    )
+    .await;
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[spl_token::instruction::sync_native(&spl_token::id(), &wsol_token_account).unwrap()],
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let instruction = deposit_wsol_with_session(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &session_signer.pubkey(),
+        &pool_token_account,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &wsol_token_account,
+        &transient_wsol_pda,
+        &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
+        None,
+        deposit_amount,
+        0,
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &session_signer],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .expect("Deposit slightly more than ATA rent should succeed");
+
+    // Verify ATA was created
+    let ata_after = context
+        .banks_client
+        .get_account(pool_token_account)
+        .await
+        .unwrap();
+    assert!(
+        ata_after.is_some(),
+        "Pool token ATA should exist after deposit"
+    );
+
+    // User should have pool tokens from the remaining amount after ATA rent
+    let pool_token_balance =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert!(
+        pool_token_balance > 0,
+        "User should have pool tokens after deposit"
     );
 }

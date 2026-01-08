@@ -17,6 +17,117 @@ pub const TRANSIENT_WSOL_SEED: &[u8] = b"transient_wsol";
 const SESSION_DISCRIMINATOR: [u8; 8] = [243, 81, 72, 115, 214, 188, 72, 144];
 
 /// Sets up a test environment with a stake pool and a session account.
+/// This version does NOT pre-create the pool token ATA to test on-chain ATA creation.
+pub async fn setup_with_session_account_no_ata(
+    token_program_id: Pubkey,
+) -> (
+    ProgramTestContext,
+    StakePoolAccounts,
+    Keypair,
+    Pubkey,
+    Keypair,
+) {
+    let mut context = program_test().start_with_context().await;
+
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
+        .await
+        .unwrap();
+
+    let user = Keypair::new();
+    let session_keypair = Keypair::new();
+
+    let clock = context.banks_client.get_sysvar::<Clock>().await.unwrap();
+    let expiration = clock.unix_timestamp + 3600;
+
+    let (signer_pda, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let session_data = manually_serialize_session(
+        &context.payer.pubkey(),
+        &user.pubkey(),
+        expiration,
+        &id(),
+        &signer_pda,
+    );
+
+    let session_account = Account {
+        lamports: context
+            .banks_client
+            .get_rent()
+            .await
+            .unwrap()
+            .minimum_balance(session_data.len()),
+        data: session_data,
+        owner: SESSION_MANAGER_ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    context.set_account(&session_keypair.pubkey(), &session_account.into());
+
+    // Get the user's pool token ATA address (but DON'T create it)
+    let pool_token_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+        &user.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &token_program_id,
+    );
+
+    // Do an initial deposit to the pool so it has liquidity (using payer, not user)
+    let payer_pool_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+        &context.payer.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &token_program_id,
+    );
+
+    let create_payer_ata_ix = spl_associated_token_account::instruction::create_associated_token_account(
+        &context.payer.pubkey(),
+        &context.payer.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &token_program_id,
+    );
+
+    let create_ata_tx = Transaction::new_signed_with_payer(
+        &[create_payer_ata_ix],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(create_ata_tx)
+        .await
+        .unwrap();
+
+    let deposit_amount = TEST_STAKE_AMOUNT;
+    let error = stake_pool_accounts
+        .deposit_sol(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &payer_pool_ata,
+            deposit_amount,
+            None,
+        )
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    (
+        context,
+        stake_pool_accounts,
+        user,
+        pool_token_ata,
+        session_keypair,
+    )
+}
+
+/// Sets up a test environment with a stake pool and a session account.
 pub async fn setup_with_session_account(
     token_program_id: Pubkey,
 ) -> (
