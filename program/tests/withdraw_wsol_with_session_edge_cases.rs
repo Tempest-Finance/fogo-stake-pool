@@ -537,3 +537,90 @@ async fn fail_wrong_program_signer(token_program_id: Pubkey) {
         _ => panic!("Expected InvalidSeeds error, got: {:?}", error),
     }
 }
+
+/// Test on-chain wSOL ATA creation
+#[test_case(spl_token::id(); "token")]
+#[tokio::test]
+async fn success_onchain_wsol_ata_creation(token_program_id: Pubkey) {
+    let (mut context, stake_pool_accounts, user, pool_token_account, session_signer, pool_tokens) =
+        setup_with_session_account(token_program_id).await;
+
+    let wsol_token_account =
+        spl_associated_token_account::get_associated_token_address_with_program_id(
+            &user.pubkey(),
+            &native_mint::id(),
+            &spl_token::id(),
+        );
+
+    let (program_signer, _program_signer_bump) =
+        Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
+
+    let pool_tokens_to_withdraw = pool_tokens / 2;
+
+    let approve_ix = spl_token::instruction::approve_checked(
+        &spl_token::id(),
+        &pool_token_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &session_signer.pubkey(),
+        &user.pubkey(),
+        &[],
+        pool_tokens_to_withdraw,
+        native_mint::DECIMALS,
+    )
+    .unwrap();
+
+    context
+        .banks_client
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[approve_ix],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &user],
+            context.last_blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let withdraw_instruction = withdraw_wsol_with_session(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+        &session_signer.pubkey(),
+        &pool_token_account,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &wsol_token_account,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.token_program_id,
+        &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
+        None,
+        pool_tokens_to_withdraw,
+        0,
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[withdraw_instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &session_signer],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    // Verify wSOL ATA was created and user received wSOL
+    let wsol_balance = get_token_balance(&mut context.banks_client, &wsol_token_account).await;
+    assert!(wsol_balance > 0, "User should have received wSOL");
+
+    // Verify pool tokens were burned
+    let remaining_pool_tokens =
+        get_token_balance(&mut context.banks_client, &pool_token_account).await;
+    assert!(
+        remaining_pool_tokens < pool_tokens,
+        "Pool tokens should have decreased"
+    );
+}
