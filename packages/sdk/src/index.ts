@@ -369,6 +369,7 @@ export async function depositWsolWithSession(
       tokenProgramId: stakePool.tokenProgramId,
       programSigner,
       payer,
+      userWallet: userPubkey,
     }),
   )
   return {

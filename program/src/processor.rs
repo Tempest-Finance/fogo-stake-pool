@@ -2685,7 +2685,7 @@ impl Processor {
         let wsol_transient_info = next_account_info(account_info_iter)?;
         let program_signer_info = next_account_info(account_info_iter)?;
         let payer_info = next_account_info(account_info_iter)?;
-        let associated_token_program_info = next_account_info(account_info_iter)?;
+        let user_wallet_info = next_account_info(account_info_iter)?;
 
         let sol_deposit_authority_info = next_account_info(account_info_iter);
 
@@ -2830,18 +2830,17 @@ impl Processor {
             invoke_signed(
                 &spl_associated_token_account::instruction::create_associated_token_account_idempotent(
                     program_signer_info.key,
-                    &user_pubkey,
+                    user_wallet_info.key,
                     pool_mint_info.key,
                     token_program_info.key,
                 ),
                 &[
                     program_signer_info.clone(),
                     dest_user_pool_info.clone(),
-                    signer_or_session_info.clone(),
+                    user_wallet_info.clone(),
                     pool_mint_info.clone(),
                     system_program_info.clone(),
                     token_program_info.clone(),
-                    associated_token_program_info.clone(),
                 ],
                 &[program_signer_seeds],
             )?;

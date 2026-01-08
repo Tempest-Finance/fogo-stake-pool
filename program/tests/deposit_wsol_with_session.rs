@@ -129,6 +129,7 @@ async fn success(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &program_signer,
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0, // minimum_pool_tokens_out - accept any amount

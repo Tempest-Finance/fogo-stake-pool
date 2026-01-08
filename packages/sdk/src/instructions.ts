@@ -965,6 +965,7 @@ export class StakePoolInstruction {
     tokenProgramId: PublicKey
     programId: PublicKey
     payer?: PublicKey
+    userWallet: PublicKey
     lamportsIn: number
     minimumPoolTokensOut: number
   }): TransactionInstruction {
@@ -992,7 +993,7 @@ export class StakePoolInstruction {
       { pubkey: params.wsolTransientAccount, isSigner: false, isWritable: true },
       { pubkey: params.programSigner, isSigner: false, isWritable: true },
       { pubkey: params.payer ?? params.fundingAccount, isSigner: true, isWritable: true },
-      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: params.userWallet, isSigner: false, isWritable: false },
     ]
 
     if (params.depositAuthority) {
@@ -1002,6 +1003,9 @@ export class StakePoolInstruction {
         isWritable: false,
       })
     }
+
+    // Associated Token Program must be last - only needed in transaction for CPI routing
+    keys.push({ pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false })
 
     return new TransactionInstruction({
       programId: params.programId,

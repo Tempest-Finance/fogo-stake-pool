@@ -75,6 +75,7 @@ async fn fail_wrong_wsol_token_ata(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &program_signer,
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0, // minimum_pool_tokens_out - accept any amount
@@ -154,6 +155,7 @@ async fn fail_wrong_transient_pda(token_program_id: Pubkey) {
         &wrong_transient_pda, // Wrong PDA!
         &program_signer,
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0, // minimum_pool_tokens_out - accept any amount
@@ -232,6 +234,7 @@ async fn fail_wrong_program_signer(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &wrong_program_signer, // Wrong signer!
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0, // minimum_pool_tokens_out - accept any amount
@@ -358,6 +361,7 @@ async fn fail_dust_deposit(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &program_signer,
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         dust_amount,
         0, // minimum_pool_tokens_out - accept any amount
@@ -492,6 +496,7 @@ async fn success_multiple_deposits(token_program_id: Pubkey) {
             &transient_wsol_pda,
             &program_signer,
             &context.payer.pubkey(),
+            &user.pubkey(),
             None,
             deposit_amount,
             0, // minimum_pool_tokens_out - accept any amount
@@ -652,6 +657,7 @@ async fn success_exact_fee_calculation(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &program_signer,
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0, // minimum_pool_tokens_out - accept any amount
@@ -819,6 +825,7 @@ async fn success_transient_rent_refunded(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &program_signer,
         &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0, // minimum_pool_tokens_out - accept any amount
@@ -976,6 +983,7 @@ async fn success_different_payer_from_fee_payer(token_program_id: Pubkey) {
         &transient_wsol_pda,
         &program_signer,
         &different_payer.pubkey(),
+        &user.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
         0,

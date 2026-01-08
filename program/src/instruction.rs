@@ -756,8 +756,9 @@ pub enum StakePoolInstruction {
     ///  12. `[w]` Transient wSOL token account
     ///  13. `[w]` Session Program Signer
     ///  14. `[s]` Payer (Paymaster)
-    ///  15. `[]` Associated Token Program
+    ///  15. `[]` User wallet (owner of the ATA)
     ///  16. `[s]` (Optional) Stake pool SOL deposit authority
+    ///  17. `[]` Associated Token Program
     DepositWsolWithSession {
         /// Amount of lamports to deposit
         lamports_in: u64,
@@ -2715,6 +2716,7 @@ pub fn deposit_wsol_with_session(
     transient_wsol_account: &Pubkey,
     program_signer: &Pubkey,
     payer: &Pubkey,
+    user_wallet: &Pubkey,
     sol_deposit_authority: Option<&Pubkey>,
     lamports_in: u64,
     minimum_pool_tokens_out: u64,
@@ -2735,12 +2737,14 @@ pub fn deposit_wsol_with_session(
         AccountMeta::new(*transient_wsol_account, false),
         AccountMeta::new(*program_signer, false),
         AccountMeta::new(*payer, true),
-        AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+        AccountMeta::new_readonly(*user_wallet, false),
     ];
 
     if let Some(sol_deposit_authority) = sol_deposit_authority {
         accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
     }
+
+    accounts.push(AccountMeta::new_readonly(spl_associated_token_account::id(), false));
 
     let data = borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession {
         lamports_in,
