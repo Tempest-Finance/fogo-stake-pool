@@ -323,25 +323,15 @@ export async function depositWsolWithSession(
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
   const stakePool = stakePoolAccount.account.data
 
-  // stakePool.tokenProgramId
-
   const instructions: TransactionInstruction[] = []
 
-  // Create token account if not specified
+  // The program handles ATA creation internally using funds from the user's deposit
+  // This prevents rent drain attacks where paymaster pays for ATA and user reclaims rent
   if (!destinationTokenAccount) {
-    const associatedAddress = getAssociatedTokenAddressSync(
+    destinationTokenAccount = getAssociatedTokenAddressSync(
       stakePool.poolMint,
       userPubkey,
     )
-    instructions.push(
-      createAssociatedTokenAccountIdempotentInstruction(
-        payer ?? signerOrSession,
-        associatedAddress,
-        userPubkey,
-        stakePool.poolMint,
-      ),
-    )
-    destinationTokenAccount = associatedAddress
   }
 
   const withdrawAuthority = await findWithdrawAuthorityProgramAddress(

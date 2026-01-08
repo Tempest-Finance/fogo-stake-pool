@@ -4,6 +4,7 @@ enable_session_management = true
 enable_preflight_simulation = true
 
 ## Variation 0: Deposit
+
 [[domains.tx_variations]]
 version = "v1"
 name = "Deposit"
@@ -14,14 +15,17 @@ max_gas_spend = 200000
 program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 required = false
 
+# NOTE: ATA creation removed from paymaster - program now handles it internally
+# using funds from the user's deposit to prevent rent drain attacks
+
 # (Optional) Create associated token account (discriminator 1)
-[[domains.tx_variations.instructions]]
-program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-required = false
-[[domains.tx_variations.instructions.data]]
-start_byte = 0
-data_type = "U8"
-constraint = { EqualTo = [{ U8 = 1 }] }
+#[[domains.tx_variations.instructions]]
+#program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+#required = false
+#[[domains.tx_variations.instructions.data]]
+#start_byte = 0
+#data_type = "U8"
+#constraint = { EqualTo = [{ U8 = 1 }] }
 
 # DepositWsolWithSession (discriminator 27)
 [[domains.tx_variations.instructions]]
@@ -33,6 +37,7 @@ data_type = "U8"
 constraint = { EqualTo = [{ U8 = 27 }] }
 
 ## Variation 1: Withdraw
+
 [[domains.tx_variations]]
 version = "v1"
 name = "Withdraw"
@@ -43,6 +48,16 @@ max_gas_spend = 200000
 program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 required = false
 
+# (Optional) Create associated token account for wSOL (discriminator 1)
+# This is still needed for withdraw since user needs wSOL ATA to receive funds
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 1 }] }
+
 # WithdrawWsolWithSession (discriminator 28)
 [[domains.tx_variations.instructions]]
 program = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
@@ -51,3 +66,15 @@ required = true
 start_byte = 0
 data_type = "U8"
 constraint = { EqualTo = [{ U8 = 28 }] }
+
+## Variation 2: OpenBox
+
+[[domains.tx_variations]]
+version = "v1"
+name = "OpenBox"
+max_gas_spend = 200000
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = true

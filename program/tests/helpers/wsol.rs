@@ -1,5 +1,5 @@
 use crate::helpers::{
-    create_token_account, get_token_balance, program_test, StakePoolAccounts, TEST_STAKE_AMOUNT,
+    get_token_balance, program_test, StakePoolAccounts, TEST_STAKE_AMOUNT,
 };
 use fogo_sessions_sdk::session::{MAJOR, SESSION_MANAGER_ID};
 use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
@@ -9,6 +9,7 @@ use solana_program_test::ProgramTestContext;
 use solana_sdk::account::Account;
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
+use solana_sdk::transaction::Transaction;
 use spl_stake_pool::{id, MINIMUM_RESERVE_LAMPORTS};
 
 pub const TRANSIENT_WSOL_SEED: &[u8] = b"transient_wsol";
@@ -70,19 +71,32 @@ pub async fn setup_with_session_account(
 
     context.set_account(&session_keypair.pubkey(), &session_account.into());
 
-    let pool_token_account = Keypair::new();
-    create_token_account(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_accounts.token_program_id,
-        &pool_token_account,
+    // Create the user's pool token ATA
+    let pool_token_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+        &user.pubkey(),
         &stake_pool_accounts.pool_mint.pubkey(),
-        &user,
-        &[],
-    )
-    .await
-    .unwrap();
+        &token_program_id,
+    );
+
+    let create_ata_ix = spl_associated_token_account::instruction::create_associated_token_account(
+        &context.payer.pubkey(),
+        &user.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &token_program_id,
+    );
+
+    let create_ata_tx = Transaction::new_signed_with_payer(
+        &[create_ata_ix],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(create_ata_tx)
+        .await
+        .unwrap();
 
     let deposit_amount = TEST_STAKE_AMOUNT;
     let error = stake_pool_accounts
@@ -90,7 +104,7 @@ pub async fn setup_with_session_account(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &pool_token_account.pubkey(),
+            &pool_token_ata,
             deposit_amount,
             None,
         )
@@ -98,13 +112,13 @@ pub async fn setup_with_session_account(
     assert!(error.is_none(), "{:?}", error);
 
     let pool_tokens =
-        get_token_balance(&mut context.banks_client, &pool_token_account.pubkey()).await;
+        get_token_balance(&mut context.banks_client, &pool_token_ata).await;
 
     (
         context,
         stake_pool_accounts,
         user,
-        pool_token_account.pubkey(),
+        pool_token_ata,
         session_keypair,
         pool_tokens,
     )

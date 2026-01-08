@@ -1,5 +1,5 @@
 import * as BufferLayout from '@solana/buffer-layout'
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   PublicKey,
   STAKE_CONFIG_ID,
@@ -992,6 +992,7 @@ export class StakePoolInstruction {
       { pubkey: params.wsolTransientAccount, isSigner: false, isWritable: true },
       { pubkey: params.programSigner, isSigner: false, isWritable: true },
       { pubkey: params.payer ?? params.fundingAccount, isSigner: true, isWritable: true },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ]
 
     if (params.depositAuthority) {

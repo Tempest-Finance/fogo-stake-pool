@@ -2685,6 +2685,7 @@ impl Processor {
         let wsol_transient_info = next_account_info(account_info_iter)?;
         let program_signer_info = next_account_info(account_info_iter)?;
         let payer_info = next_account_info(account_info_iter)?;
+        let associated_token_program_info = next_account_info(account_info_iter)?;
 
         let sol_deposit_authority_info = next_account_info(account_info_iter);
 
@@ -2797,7 +2798,7 @@ impl Processor {
             &[program_signer_seeds],
         )?;
 
-        // Refund rent to payer
+        // Refund transient wSOL rent to payer
         let rent_lamports = rent
             .minimum_balance(spl_token::state::Account::LEN)
             .max(1);
@@ -2812,12 +2813,53 @@ impl Processor {
             &[program_signer_seeds],
         )?;
 
+        // Create the user's pool token ATA if it doesn't exist (idempotent)
+        // The cost comes from the user's deposited wSOL, preventing rent drain attacks
+        let ata_creation_cost = if dest_user_pool_info.data_is_empty() {
+            let ata_rent = rent.minimum_balance(spl_token::state::Account::LEN);
+
+            if deposit_lamports <= ata_rent {
+                msg!(
+                    "Deposit amount ({}) must be greater than ATA rent ({}) for first deposit",
+                    deposit_lamports,
+                    ata_rent
+                );
+                return Err(StakePoolError::DepositTooSmall.into());
+            }
+
+            invoke_signed(
+                &spl_associated_token_account::instruction::create_associated_token_account_idempotent(
+                    program_signer_info.key,
+                    &user_pubkey,
+                    pool_mint_info.key,
+                    token_program_info.key,
+                ),
+                &[
+                    program_signer_info.clone(),
+                    dest_user_pool_info.clone(),
+                    signer_or_session_info.clone(),
+                    pool_mint_info.clone(),
+                    system_program_info.clone(),
+                    token_program_info.clone(),
+                    associated_token_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+
+            ata_rent
+        } else {
+            0
+        };
+
+        // Calculate the effective deposit amount after ATA creation cost
+        let effective_deposit = deposit_lamports - ata_creation_cost;
+
         // Deposit the unwrapped SOL into the stake pool's reserve stake account
         invoke_signed(
             &system_instruction::transfer(
                 program_signer_info.key,
                 reserve_stake_account_info.key,
-                deposit_lamports,
+                effective_deposit,
             ),
             &[
                 system_program_info.clone(),
@@ -2849,7 +2891,7 @@ impl Processor {
         Self::process_deposit_sol(
             program_id,
             &new_accounts,
-            deposit_lamports,
+            effective_deposit,
             minimum_pool_tokens_out,
             // the SOL transfer has already been done above
             true,

@@ -745,18 +745,19 @@ pub enum StakePoolInstruction {
     ///   1. `[]` Stake pool withdraw authority
     ///   2. `[w]` Reserve stake account
     ///   3. `[s]` Signer or Session wSOL source account
-    ///   3. `[w]` User's destination pool token account
-    ///   4. `[w]` Manager fee account
-    ///   5. `[w]` Referrer fee account
-    ///   6. `[w]` Pool token mint
-    ///   7. `[]` System Program
-    ///   8. `[]` Token Program
-    ///  9. `[]` Native mint (wSOL)
-    ///  10. `[w]` wSOL token account owned by the user
-    ///  11. `[w]` Transient wSOL token account
-    ///  12. `[w]` Session Program Signer
-    ///  13. `[s]` Payer (Paymaster)
-    ///  14. `[s]` (Optional) Stake pool SOL deposit authority
+    ///   4. `[w]` User's destination pool token account (ATA)
+    ///   5. `[w]` Manager fee account
+    ///   6. `[w]` Referrer fee account
+    ///   7. `[w]` Pool token mint
+    ///   8. `[]` System Program
+    ///   9. `[]` Token Program
+    ///  10. `[]` Native mint (wSOL)
+    ///  11. `[w]` wSOL token account owned by the user
+    ///  12. `[w]` Transient wSOL token account
+    ///  13. `[w]` Session Program Signer
+    ///  14. `[s]` Payer (Paymaster)
+    ///  15. `[]` Associated Token Program
+    ///  16. `[s]` (Optional) Stake pool SOL deposit authority
     DepositWsolWithSession {
         /// Amount of lamports to deposit
         lamports_in: u64,
@@ -2734,6 +2735,7 @@ pub fn deposit_wsol_with_session(
         AccountMeta::new(*transient_wsol_account, false),
         AccountMeta::new(*program_signer, false),
         AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(spl_associated_token_account::id(), false),
     ];
 
     if let Some(sol_deposit_authority) = sol_deposit_authority {
