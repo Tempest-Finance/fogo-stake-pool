@@ -964,10 +964,10 @@ export class StakePoolInstruction {
     programSigner: PublicKey
     tokenProgramId: PublicKey
     programId: PublicKey
-    payer?: PublicKey
     userWallet: PublicKey
     lamportsIn: number
     minimumPoolTokensOut: number
+    payer?: PublicKey
   }): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DepositWsolWithSession
     const data = encodeData(type, {
