@@ -77,6 +77,7 @@ async fn fail_wrong_wsol_token_ata(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -155,6 +156,7 @@ async fn fail_wrong_transient_pda(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -232,6 +234,7 @@ async fn fail_wrong_program_signer(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -357,6 +360,7 @@ async fn fail_dust_deposit(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         dust_amount,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -490,6 +494,7 @@ async fn success_multiple_deposits(token_program_id: Pubkey) {
             &context.payer.pubkey(),
             None,
             deposit_amount,
+            0, // minimum_pool_tokens_out - accept any amount
         );
 
         let transaction = Transaction::new_signed_with_payer(
@@ -649,6 +654,7 @@ async fn success_exact_fee_calculation(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -815,6 +821,7 @@ async fn success_transient_rent_refunded(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(

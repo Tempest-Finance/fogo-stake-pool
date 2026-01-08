@@ -131,6 +131,7 @@ async fn success(token_program_id: Pubkey) {
         &context.payer.pubkey(),
         None,
         TEST_STAKE_AMOUNT,
+        0, // minimum_pool_tokens_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(

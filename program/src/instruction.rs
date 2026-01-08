@@ -757,7 +757,12 @@ pub enum StakePoolInstruction {
     ///  12. `[w]` Session Program Signer
     ///  13. `[s]` Payer (Paymaster)
     ///  14. `[s]` (Optional) Stake pool SOL deposit authority
-    DepositWsolWithSession(u64),
+    DepositWsolWithSession {
+        /// Amount of lamports to deposit
+        lamports_in: u64,
+        /// Minimum amount of pool tokens that must be received
+        minimum_pool_tokens_out: u64,
+    },
 
     ///   Withdraw wrapped SOL via a Fogo session.
     ///
@@ -776,7 +781,12 @@ pub enum StakePoolInstruction {
     ///  12. `[]` Native mint (wSOL)
     ///  13. `[w]` Session Program Signer
     ///  14. `[s]` (Optional) Stake pool SOL withdraw authority
-    WithdrawWsolWithSession(u64),
+    WithdrawWsolWithSession {
+        /// Pool tokens to burn in exchange for lamports
+        pool_tokens_in: u64,
+        /// Minimum amount of lamports that must be received
+        minimum_lamports_out: u64,
+    },
 }
 
 /// Creates an `Initialize` instruction.
@@ -1680,7 +1690,7 @@ pub fn cleanup_removed_validator_entries(
     validator_list_storage: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
     ];
     Instruction {
@@ -2705,7 +2715,8 @@ pub fn deposit_wsol_with_session(
     program_signer: &Pubkey,
     payer: &Pubkey,
     sol_deposit_authority: Option<&Pubkey>,
-    amount: u64,
+    lamports_in: u64,
+    minimum_pool_tokens_out: u64,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -2729,7 +2740,11 @@ pub fn deposit_wsol_with_session(
         accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
     }
 
-    let data = borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession(amount)).unwrap();
+    let data = borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession {
+        lamports_in,
+        minimum_pool_tokens_out,
+    })
+    .unwrap();
 
     Instruction {
         program_id: *program_id,
@@ -2753,7 +2768,8 @@ pub fn withdraw_wsol_with_session(
     token_program_id: &Pubkey,
     program_signer: &Pubkey,
     sol_withdraw_authority: Option<&Pubkey>,
-    pool_tokens: u64,
+    pool_tokens_in: u64,
+    minimum_lamports_out: u64,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -2776,7 +2792,11 @@ pub fn withdraw_wsol_with_session(
         accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
     }
 
-    let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession(pool_tokens)).unwrap();
+    let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession {
+        pool_tokens_in,
+        minimum_lamports_out,
+    })
+    .unwrap();
 
     Instruction {
         program_id: *program_id,

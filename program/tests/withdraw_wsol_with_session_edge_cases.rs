@@ -94,6 +94,7 @@ async fn fail_wrong_destination_ata(token_program_id: Pubkey) {
         &program_signer,
         None,
         pool_tokens_to_withdraw,
+        0, // minimum_lamports_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -190,6 +191,7 @@ async fn fail_dust_withdrawal(token_program_id: Pubkey) {
         &program_signer,
         None,
         dust_amount,
+        0, // minimum_lamports_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -291,6 +293,7 @@ async fn success_full_withdrawal(token_program_id: Pubkey) {
         &program_signer,
         None,
         pool_tokens,
+        0, // minimum_lamports_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
@@ -395,6 +398,7 @@ async fn success_multiple_withdrawals(token_program_id: Pubkey) {
             &program_signer,
             None,
             withdraw_amount,
+            0, // minimum_lamports_out - accept any amount
         );
 
         let transaction = Transaction::new_signed_with_payer(
@@ -501,6 +505,7 @@ async fn fail_wrong_program_signer(token_program_id: Pubkey) {
         &wrong_program_signer, // Wrong signer!
         None,
         pool_tokens_to_withdraw,
+        0, // minimum_lamports_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(

@@ -121,6 +121,7 @@ async fn success(token_program_id: Pubkey) {
         &program_signer,
         None,
         pool_tokens_to_withdraw,
+        0, // minimum_lamports_out - accept any amount
     );
 
     let transaction = Transaction::new_signed_with_payer(
