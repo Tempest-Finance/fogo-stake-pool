@@ -382,11 +382,13 @@ export type WithdrawWsolWithSessionParams = {
   managerFeeAccount: PublicKey
   poolMint: PublicKey
   tokenProgramId: PublicKey
-  solWithdrawAuthority?: PublicKey
   wsolMint: PublicKey
   programSigner: PublicKey
+  userWallet: PublicKey
   poolTokensIn: number
   minimumLamportsOut: number
+  payer?: PublicKey
+  solWithdrawAuthority?: PublicKey
 }
 
 /**
@@ -1138,6 +1140,9 @@ export class StakePoolInstruction {
 
       { pubkey: params.wsolMint, isSigner: false, isWritable: false },
       { pubkey: params.programSigner, isSigner: false, isWritable: true },
+      { pubkey: params.payer ?? params.userTransferAuthority, isSigner: true, isWritable: true },
+      { pubkey: params.userWallet, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ]
 
     if (params.solWithdrawAuthority) {
@@ -1147,6 +1152,9 @@ export class StakePoolInstruction {
         isWritable: false,
       })
     }
+
+    // Associated Token Program must be last - only needed in transaction for CPI routing
+    keys.push({ pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false })
 
     return new TransactionInstruction({
       programId: params.programId,

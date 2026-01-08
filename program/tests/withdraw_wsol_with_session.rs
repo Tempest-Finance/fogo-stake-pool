@@ -119,6 +119,8 @@ async fn success(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.token_program_id,
         &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         pool_tokens_to_withdraw,
         0, // minimum_lamports_out - accept any amount

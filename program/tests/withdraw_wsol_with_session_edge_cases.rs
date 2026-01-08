@@ -92,6 +92,8 @@ async fn fail_wrong_destination_ata(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.token_program_id,
         &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         pool_tokens_to_withdraw,
         0, // minimum_lamports_out - accept any amount
@@ -189,6 +191,8 @@ async fn fail_dust_withdrawal(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.token_program_id,
         &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         dust_amount,
         0, // minimum_lamports_out - accept any amount
@@ -291,6 +295,8 @@ async fn success_full_withdrawal(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.token_program_id,
         &program_signer,
+        &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         pool_tokens,
         0, // minimum_lamports_out - accept any amount
@@ -396,6 +402,8 @@ async fn success_multiple_withdrawals(token_program_id: Pubkey) {
             &stake_pool_accounts.pool_mint.pubkey(),
             &stake_pool_accounts.token_program_id,
             &program_signer,
+            &context.payer.pubkey(),
+            &user.pubkey(),
             None,
             withdraw_amount,
             0, // minimum_lamports_out - accept any amount
@@ -503,6 +511,8 @@ async fn fail_wrong_program_signer(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.token_program_id,
         &wrong_program_signer, // Wrong signer!
+        &context.payer.pubkey(),
+        &user.pubkey(),
         None,
         pool_tokens_to_withdraw,
         0, // minimum_lamports_out - accept any amount

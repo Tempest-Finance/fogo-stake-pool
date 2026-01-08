@@ -827,6 +827,7 @@ export async function withdrawWsolWithSession(
   amount: number,
   minimumLamportsOut: number = 0,
   solWithdrawAuthority?: PublicKey,
+  payer?: PublicKey,
 ) {
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
@@ -848,14 +849,8 @@ export async function withdrawWsolWithSession(
   const instructions: TransactionInstruction[] = []
   const signers: Signer[] = []
 
-  instructions.push(
-    createAssociatedTokenAccountIdempotentInstruction(
-      signerOrSession,
-      userWsolAccount,
-      userPubkey,
-      NATIVE_MINT,
-    ),
-  )
+  // The program handles wSOL ATA creation internally
+  // This prevents rent drain attacks where paymaster pays for ATA and user reclaims rent
 
   const [programSigner] = PublicKey.findProgramAddressSync(
     [Buffer.from('fogo_session_program_signer')],
@@ -882,6 +877,8 @@ export async function withdrawWsolWithSession(
       solWithdrawAuthority,
       wsolMint: NATIVE_MINT,
       programSigner,
+      userWallet: userPubkey,
+      payer,
       poolTokensIn: poolTokens,
       minimumLamportsOut,
     }),

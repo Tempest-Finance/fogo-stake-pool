@@ -2816,6 +2816,21 @@ impl Processor {
         // Create the user's pool token ATA if it doesn't exist (idempotent)
         // The cost comes from the user's deposited wSOL, preventing rent drain attacks
         let ata_creation_cost = if dest_user_pool_info.data_is_empty() {
+            // Verify dest_user_pool_info is the correct ATA for user_wallet
+            let expected_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+                user_wallet_info.key,
+                pool_mint_info.key,
+                token_program_info.key,
+            );
+            if *dest_user_pool_info.key != expected_ata {
+                msg!(
+                    "dest_user_pool ({}) is not the ATA for user_wallet ({})",
+                    dest_user_pool_info.key,
+                    expected_ata
+                );
+                return Err(ProgramError::InvalidAccountData);
+            }
+
             let ata_rent = rent.minimum_balance(spl_token::state::Account::LEN);
 
             if deposit_lamports < ata_rent {
@@ -3404,6 +3419,7 @@ impl Processor {
         minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         use fogo_sessions_sdk::session::Session;
+        use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
         use solana_program::program_pack::Pack;
 
         let account_info_iter = &mut accounts.iter();
@@ -3423,6 +3439,9 @@ impl Processor {
         // wsol-specific accounts
         let wsol_mint_info = next_account_info(account_info_iter)?;
         let program_signer_info = next_account_info(account_info_iter)?;
+        let payer_info = next_account_info(account_info_iter)?;
+        let user_wallet_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
 
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
 
@@ -3433,11 +3452,6 @@ impl Processor {
 
         if *wsol_mint_info.owner != *token_program_info.key {
             msg!("`wsol_mint` is not owned by the token program");
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        if *destination_account_info.owner != *token_program_info.key {
-            msg!("`destination_account` is not owned by the token program");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -3452,8 +3466,80 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
-        // Verify destination_account_info is a valid wSOL token account owned by the user
-        // This is more flexible than requiring the ATA specifically
+        let (expected_program_signer, program_signer_bump) =
+            Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+
+        if *program_signer_info.key != expected_program_signer {
+            msg!("`program_signer` does not match expected address");
+            return Err(ProgramError::InvalidSeeds);
+        }
+
+        let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
+
+        let rent = Rent::get()?;
+
+        // Create the user's wSOL ATA if it doesn't exist (idempotent)
+        // The cost comes from the payer, but will be refunded when user closes wSOL ATA
+        // This prevents rent drain attacks where paymaster pays for ATA
+        if destination_account_info.data_is_empty() {
+            // Verify destination_account_info is the correct wSOL ATA for user_wallet
+            let expected_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+                user_wallet_info.key,
+                wsol_mint_info.key,
+                token_program_info.key,
+            );
+            if *destination_account_info.key != expected_ata {
+                msg!(
+                    "destination_account ({}) is not the wSOL ATA for user_wallet ({})",
+                    destination_account_info.key,
+                    expected_ata
+                );
+                return Err(ProgramError::InvalidAccountData);
+            }
+
+            let ata_rent = rent.minimum_balance(spl_token::state::Account::LEN);
+
+            // Transfer rent from payer to program_signer for ATA creation
+            invoke(
+                &system_instruction::transfer(payer_info.key, program_signer_info.key, ata_rent),
+                &[
+                    payer_info.clone(),
+                    program_signer_info.clone(),
+                    system_program_info.clone(),
+                ],
+            )?;
+
+            invoke_signed(
+                &spl_associated_token_account::instruction::create_associated_token_account_idempotent(
+                    program_signer_info.key,
+                    user_wallet_info.key,
+                    wsol_mint_info.key,
+                    token_program_info.key,
+                ),
+                &[
+                    program_signer_info.clone(),
+                    destination_account_info.clone(),
+                    user_wallet_info.clone(),
+                    wsol_mint_info.clone(),
+                    system_program_info.clone(),
+                    token_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+
+            // Refund ATA rent back to payer
+            invoke_signed(
+                &system_instruction::transfer(program_signer_info.key, payer_info.key, ata_rent),
+                &[
+                    program_signer_info.clone(),
+                    payer_info.clone(),
+                    system_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+        }
+
+        // Now verify destination_account_info is a valid wSOL token account owned by the user
         let destination_token_data =
             spl_token::state::Account::unpack(&destination_account_info.data.borrow())?;
         if destination_token_data.mint != spl_token::native_mint::id() {

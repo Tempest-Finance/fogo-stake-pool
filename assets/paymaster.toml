@@ -48,15 +48,16 @@ max_gas_spend = 200000
 program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 required = false
 
+# NOTE: wSOL ATA creation removed from paymaster - program now handles it internally
+# using payer funds (refunded when user closes wSOL ATA) to prevent rent drain attacks
 # (Optional) Create associated token account for wSOL (discriminator 1)
-# This is still needed for withdraw since user needs wSOL ATA to receive funds
-[[domains.tx_variations.instructions]]
-program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-required = false
-[[domains.tx_variations.instructions.data]]
-start_byte = 0
-data_type = "U8"
-constraint = { EqualTo = [{ U8 = 1 }] }
+#[[domains.tx_variations.instructions]]
+#program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+#required = false
+#[[domains.tx_variations.instructions.data]]
+#start_byte = 0
+#data_type = "U8"
+#constraint = { EqualTo = [{ U8 = 1 }] }
 
 # WithdrawWsolWithSession (discriminator 28)
 [[domains.tx_variations.instructions]]
