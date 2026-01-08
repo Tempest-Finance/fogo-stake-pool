@@ -2818,9 +2818,9 @@ impl Processor {
         let ata_creation_cost = if dest_user_pool_info.data_is_empty() {
             let ata_rent = rent.minimum_balance(spl_token::state::Account::LEN);
 
-            if deposit_lamports <= ata_rent {
+            if deposit_lamports < ata_rent {
                 msg!(
-                    "Deposit amount ({}) must be greater than ATA rent ({}) for first deposit",
+                    "Deposit amount ({}) must be at least ATA rent ({}) for first deposit",
                     deposit_lamports,
                     ata_rent
                 );
