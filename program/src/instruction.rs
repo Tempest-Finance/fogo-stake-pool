@@ -793,6 +793,29 @@ pub enum StakePoolInstruction {
         /// Minimum amount of lamports that must be received
         minimum_lamports_out: u64,
     },
+
+    ///   Withdraw stake via a Fogo session.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Validator or reserve stake account to split
+    ///   4. `[w]` Uninitialized stake account to receive withdrawal
+    ///   5. `[s]` Signer or Session (user_stake_authority)
+    ///   6. `[]` User transfer authority (same as account 5 for session path)
+    ///   7. `[w]` User account with pool tokens to burn from
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` Clock sysvar
+    ///  11. `[]` Token program id
+    ///  12. `[]` Stake program id
+    ///  13. `[]` Program signer PDA
+    WithdrawStakeWithSession {
+        /// Pool tokens to burn in exchange for stake
+        pool_tokens_in: u64,
+        /// Minimum amount of lamports that must be received
+        minimum_lamports_out: u64,
+    },
 }
 
 /// Creates an `Initialize` instruction.
@@ -2811,6 +2834,53 @@ pub fn withdraw_wsol_with_session(
     accounts.push(AccountMeta::new_readonly(spl_associated_token_account::id(), false));
 
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession {
+        pool_tokens_in,
+        minimum_lamports_out,
+    })
+    .unwrap();
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+/// Creates instruction to withdraw stake from a stake pool using a session signer.
+pub fn withdraw_stake_with_session(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list: &Pubkey,
+    withdraw_authority: &Pubkey,
+    stake_to_split: &Pubkey,
+    stake_to_receive: &Pubkey,
+    session_signer: &Pubkey,
+    burn_from_pool: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    program_signer: &Pubkey,
+    pool_tokens_in: u64,
+    minimum_lamports_out: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new(*stake_to_split, false),
+        AccountMeta::new(*stake_to_receive, false),
+        AccountMeta::new_readonly(*session_signer, true),  // user_stake_authority (signer_or_session)
+        AccountMeta::new_readonly(*session_signer, false), // user_transfer_authority (not used in session path)
+        AccountMeta::new(*burn_from_pool, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(*program_signer, false),
+    ];
+
+    let data = borsh::to_vec(&StakePoolInstruction::WithdrawStakeWithSession {
         pool_tokens_in,
         minimum_lamports_out,
     })

@@ -3307,14 +3307,6 @@ impl Processor {
             Some((validator_stake_info, withdraw_source))
         };
 
-        Self::token_burn(
-            token_program_info.clone(),
-            burn_from_pool_info.clone(),
-            pool_mint_info.clone(),
-            user_transfer_authority_info.clone(),
-            pool_tokens_burnt,
-        )?;
-
         Self::stake_split(
             stake_pool_info.key,
             stake_split_from.clone(),
@@ -3325,26 +3317,121 @@ impl Processor {
             stake_split_to.clone(),
         )?;
 
-        Self::stake_authorize_signed(
-            stake_pool_info.key,
-            stake_split_to.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            user_stake_authority_info.key,
-            clock_info.clone(),
-        )?;
+        // Determine if we are using the session path (with program signer account)
+        if let Ok(program_signer_info) = next_account_info(account_info_iter) {
+            use fogo_sessions_sdk::session::Session;
+            use fogo_sessions_sdk::token::instruction::{burn, transfer_checked};
+            use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
+            use solana_program::program_pack::Pack;
 
-        if pool_tokens_fee > 0 {
-            Self::token_transfer(
+            let (expected_program_signer, program_signer_bump) =
+                Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+
+            if expected_program_signer != *program_signer_info.key {
+                msg!("Invalid program signer account");
+                return Err(ProgramError::InvalidSeeds);
+            }
+
+            // For session path, user_stake_authority_info is actually the signer_or_session
+            // and user_transfer_authority_info is not used (we use session for token ops)
+            let signer_or_session_info = user_stake_authority_info;
+            let user_pubkey =
+                Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
+
+            // Validate burn_from_pool is owned by the session user
+            let burn_from_pool_data =
+                spl_token::state::Account::unpack(&burn_from_pool_info.data.borrow())?;
+            if burn_from_pool_data.owner != user_pubkey {
+                msg!("`burn_from_pool` is not owned by the session user");
+                return Err(ProgramError::InvalidAccountData);
+            }
+
+            let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
+
+            // Burn using session
+            invoke_signed(
+                &burn(
+                    token_program_info.key,
+                    burn_from_pool_info.key,
+                    pool_mint_info.key,
+                    signer_or_session_info.key,
+                    Some(program_signer_info.key),
+                    pool_tokens_burnt,
+                )?,
+                &[
+                    burn_from_pool_info.clone(),
+                    pool_mint_info.clone(),
+                    signer_or_session_info.clone(),
+                    program_signer_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+
+            // Authorize stake to user's wallet (extracted from session)
+            Self::stake_authorize_signed(
+                stake_pool_info.key,
+                stake_split_to.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                &user_pubkey,
+                clock_info.clone(),
+            )?;
+
+            // Transfer fee using session
+            if pool_tokens_fee > 0 {
+                invoke_signed(
+                    &transfer_checked(
+                        token_program_info.key,
+                        burn_from_pool_info.key,
+                        pool_mint_info.key,
+                        manager_fee_info.key,
+                        signer_or_session_info.key,
+                        Some(program_signer_info.key),
+                        pool_tokens_fee,
+                        decimals,
+                    )?,
+                    &[
+                        burn_from_pool_info.clone(),
+                        pool_mint_info.clone(),
+                        manager_fee_info.clone(),
+                        signer_or_session_info.clone(),
+                        program_signer_info.clone(),
+                    ],
+                    &[program_signer_seeds],
+                )?;
+            }
+        } else {
+            // Regular path - use standard token operations
+            Self::token_burn(
                 token_program_info.clone(),
                 burn_from_pool_info.clone(),
                 pool_mint_info.clone(),
-                manager_fee_info.clone(),
                 user_transfer_authority_info.clone(),
-                pool_tokens_fee,
-                decimals,
+                pool_tokens_burnt,
             )?;
+
+            Self::stake_authorize_signed(
+                stake_pool_info.key,
+                stake_split_to.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                user_stake_authority_info.key,
+                clock_info.clone(),
+            )?;
+
+            if pool_tokens_fee > 0 {
+                Self::token_transfer(
+                    token_program_info.clone(),
+                    burn_from_pool_info.clone(),
+                    pool_mint_info.clone(),
+                    manager_fee_info.clone(),
+                    user_transfer_authority_info.clone(),
+                    pool_tokens_fee,
+                    decimals,
+                )?;
+            }
         }
 
         stake_pool.pool_token_supply = stake_pool
@@ -4276,6 +4363,18 @@ impl Processor {
             } => {
                 msg!("Instruction: WithdrawWsolWithSession");
                 Self::process_withdraw_wsol_with_session(
+                    program_id,
+                    accounts,
+                    pool_tokens_in,
+                    Some(minimum_lamports_out),
+                )
+            }
+            StakePoolInstruction::WithdrawStakeWithSession {
+                pool_tokens_in,
+                minimum_lamports_out,
+            } => {
+                msg!("Instruction: WithdrawStakeWithSession");
+                Self::process_withdraw_stake(
                     program_id,
                     accounts,
                     pool_tokens_in,

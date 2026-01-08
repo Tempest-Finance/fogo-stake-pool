@@ -890,6 +890,164 @@ export async function withdrawWsolWithSession(
   }
 }
 
+/**
+ * Creates instructions required to withdraw stake from a stake pool using a Fogo session.
+ * The withdrawn stake account will be authorized to the user's wallet.
+ */
+export async function withdrawStakeWithSession(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  signerOrSession: PublicKey,
+  userPubkey: PublicKey,
+  amount: number,
+  useReserve = false,
+  voteAccountAddress?: PublicKey,
+  minimumLamportsOut: number = 0,
+  payer?: PublicKey,
+  validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
+) {
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
+  const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
+  const stakePool = stakePoolAccount.account.data
+  const poolTokens = solToLamports(amount)
+  const poolAmount = new BN(poolTokens)
+
+  const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
+  const tokenAccount = await getAccount(connection, poolTokenAccount)
+
+  if (tokenAccount.amount < poolTokens) {
+    throw new Error(
+      `Not enough token balance to withdraw ${amount} pool tokens.
+          Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
+    )
+  }
+
+  const [programSigner] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fogo_session_program_signer')],
+    stakePoolProgramId,
+  )
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    stakePoolProgramId,
+    stakePoolAddress,
+  )
+
+  const stakeAccountRentExemption = await connection.getMinimumBalanceForRentExemption(StakeProgram.space)
+
+  // Determine which stake accounts to withdraw from
+  const withdrawAccounts: WithdrawAccount[] = []
+
+  if (useReserve) {
+    withdrawAccounts.push({
+      stakeAddress: stakePool.reserveStake,
+      voteAddress: undefined,
+      poolAmount,
+    })
+  } else if (voteAccountAddress) {
+    const stakeAccountAddress = await findStakeProgramAddress(
+      stakePoolProgramId,
+      voteAccountAddress,
+      stakePoolAddress,
+    )
+    const stakeAccount = await connection.getAccountInfo(stakeAccountAddress)
+    if (!stakeAccount) {
+      throw new Error(`Validator stake account not found for vote address ${voteAccountAddress.toBase58()}`)
+    }
+
+    const availableLamports = new BN(
+      stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
+    )
+    if (availableLamports.lt(new BN(0))) {
+      throw new Error('Invalid Stake Account')
+    }
+    const availableForWithdrawal = calcLamportsWithdrawAmount(
+      stakePool,
+      availableLamports,
+    )
+
+    if (availableForWithdrawal.lt(poolAmount)) {
+      throw new Error(
+        `Not enough lamports available for withdrawal from ${stakeAccountAddress},
+          ${poolAmount} asked, ${availableForWithdrawal} available.`,
+      )
+    }
+    withdrawAccounts.push({
+      stakeAddress: stakeAccountAddress,
+      voteAddress: voteAccountAddress,
+      poolAmount,
+    })
+  } else {
+    // Get the list of accounts to withdraw from automatically
+    withdrawAccounts.push(
+      ...(await prepareWithdrawAccounts(
+        connection,
+        stakePool,
+        stakePoolAddress,
+        poolAmount,
+        validatorComparator,
+        poolTokenAccount.equals(stakePool.managerFeeAccount),
+      )),
+    )
+  }
+
+  const instructions: TransactionInstruction[] = []
+  const signers: Signer[] = []
+  const stakeAccountPubkeys: PublicKey[] = []
+
+  // Max 5 accounts to prevent an error: "Transaction too large"
+  const maxWithdrawAccounts = 5
+  let i = 0
+
+  for (const withdrawAccount of withdrawAccounts) {
+    if (i >= maxWithdrawAccounts) {
+      break
+    }
+
+    // Create a new stake account to receive the withdrawal
+    const stakeReceiver = Keypair.generate()
+    signers.push(stakeReceiver)
+    stakeAccountPubkeys.push(stakeReceiver.publicKey)
+
+    // Create the stake account that will receive the split stake
+    instructions.push(
+      SystemProgram.createAccount({
+        fromPubkey: payer ?? userPubkey,
+        newAccountPubkey: stakeReceiver.publicKey,
+        lamports: stakeAccountRentExemption,
+        space: StakeProgram.space,
+        programId: StakeProgram.programId,
+      }),
+    )
+
+    // Add the withdraw stake with session instruction
+    instructions.push(
+      StakePoolInstruction.withdrawStakeWithSession({
+        programId: stakePoolProgramId,
+        stakePool: stakePoolAddress,
+        validatorList: stakePool.validatorList,
+        withdrawAuthority,
+        stakeToSplit: withdrawAccount.stakeAddress,
+        stakeToReceive: stakeReceiver.publicKey,
+        sessionSigner: signerOrSession,
+        burnFromPool: poolTokenAccount,
+        managerFeeAccount: stakePool.managerFeeAccount,
+        poolMint: stakePool.poolMint,
+        tokenProgramId: stakePool.tokenProgramId,
+        programSigner,
+        poolTokensIn: withdrawAccount.poolAmount.toNumber(),
+        minimumLamportsOut,
+      }),
+    )
+    i++
+  }
+
+  return {
+    instructions,
+    signers,
+    stakeAccountPubkeys,
+  }
+}
+
 export async function addValidatorToPool(
   connection: Connection,
   stakePoolAddress: PublicKey,

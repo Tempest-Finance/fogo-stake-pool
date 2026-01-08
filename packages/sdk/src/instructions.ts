@@ -41,6 +41,7 @@ export type StakePoolInstructionType
     | 'RemoveValidatorFromPool'
     | 'DepositWsolWithSession'
     | 'WithdrawWsolWithSession'
+    | 'WithdrawStakeWithSession'
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -193,7 +194,8 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 24,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
+      BufferLayout.ns64('poolTokensIn'),
+      BufferLayout.ns64('minimumLamportsOut'),
     ]),
   },
   DepositSolWithSlippage: {
@@ -220,6 +222,14 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   },
   WithdrawWsolWithSession: {
     index: 28,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.ns64('poolTokensIn'),
+      BufferLayout.ns64('minimumLamportsOut'),
+    ]),
+  },
+  WithdrawStakeWithSession: {
+    index: 29,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
       BufferLayout.ns64('poolTokensIn'),
@@ -389,6 +399,25 @@ export type WithdrawWsolWithSessionParams = {
   minimumLamportsOut: number
   payer?: PublicKey
   solWithdrawAuthority?: PublicKey
+}
+
+export type WithdrawStakeWithSessionParams = {
+  programId: PublicKey
+  stakePool: PublicKey
+  validatorList: PublicKey
+  withdrawAuthority: PublicKey
+  stakeToSplit: PublicKey
+  stakeToReceive: PublicKey
+  /** The session signer (user or session) - used as both stake authority and transfer authority */
+  sessionSigner: PublicKey
+  burnFromPool: PublicKey
+  managerFeeAccount: PublicKey
+  poolMint: PublicKey
+  tokenProgramId: PublicKey
+  /** The program signer PDA derived from PROGRAM_SIGNER_SEED */
+  programSigner: PublicKey
+  poolTokensIn: number
+  minimumLamportsOut: number
 }
 
 /**
@@ -1155,6 +1184,40 @@ export class StakePoolInstruction {
 
     // Associated Token Program must be last - only needed in transaction for CPI routing
     keys.push({ pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false })
+
+    return new TransactionInstruction({
+      programId: params.programId,
+      keys,
+      data,
+    })
+  }
+
+  /**
+   * Creates a transaction instruction to withdraw stake from a stake pool using a Fogo session.
+   */
+  static withdrawStakeWithSession(params: WithdrawStakeWithSessionParams): TransactionInstruction {
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStakeWithSession
+    const data = encodeData(type, {
+      poolTokensIn: params.poolTokensIn,
+      minimumLamportsOut: params.minimumLamportsOut,
+    })
+
+    const keys = [
+      { pubkey: params.stakePool, isSigner: false, isWritable: true },
+      { pubkey: params.validatorList, isSigner: false, isWritable: true },
+      { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: params.stakeToSplit, isSigner: false, isWritable: true },
+      { pubkey: params.stakeToReceive, isSigner: false, isWritable: true },
+      { pubkey: params.sessionSigner, isSigner: true, isWritable: false }, // user_stake_authority_info (signer_or_session)
+      { pubkey: params.sessionSigner, isSigner: false, isWritable: false }, // user_transfer_authority_info (not used in session path)
+      { pubkey: params.burnFromPool, isSigner: false, isWritable: true },
+      { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
+      { pubkey: params.poolMint, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: params.programSigner, isSigner: false, isWritable: false },
+    ]
 
     return new TransactionInstruction({
       programId: params.programId,
