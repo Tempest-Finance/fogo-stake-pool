@@ -3308,7 +3308,7 @@ impl Processor {
             Some((validator_stake_info, withdraw_source))
         };
 
-        // WithdrawStakeWithSession path - create stake account PDA if needed
+        // WithdrawStakeWithSession path - create user stake account PDA
         // Tuple: (user_pubkey, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports)
         let session_pda_info: Option<(Pubkey, u8, AccountInfo, AccountInfo, u64)> =
             if let Some(seed) = user_stake_seed {
@@ -3328,7 +3328,6 @@ impl Processor {
                 let system_program_info = next_account_info(account_info_iter)?;
                 let payer_info = next_account_info(account_info_iter)?;
 
-                // Validate system program
                 check_system_program(system_program_info.key)?;
 
                 if !payer_info.is_signer {
@@ -3436,7 +3435,7 @@ impl Processor {
             stake_split_to.clone(),
         )?;
 
-        // WithdrawStakeWithSession path - use session for token ops, keep withdraw_authority
+        // WithdrawStakeWithSession path - use session for token ops, set PDA as its own authority
         if let Some((user_pubkey, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports)) = session_pda_info {
             use fogo_sessions_sdk::token::instruction::{burn, transfer_checked};
             use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
@@ -3505,7 +3504,7 @@ impl Processor {
                 stake_pool.stake_withdraw_bump_seed,
             )?;
 
-            // Transfer stake authority to the user stake PDA so it can sign the later withdrawal
+            // Set stake authority to the PDA itself so it can sign the later withdrawal
             Self::stake_authorize_signed(
                 stake_pool_info.key,
                 stake_split_to.clone(),
