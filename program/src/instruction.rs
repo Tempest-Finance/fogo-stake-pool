@@ -745,18 +745,20 @@ pub enum StakePoolInstruction {
     ///   1. `[]` Stake pool withdraw authority
     ///   2. `[w]` Reserve stake account
     ///   3. `[s]` Signer or Session wSOL source account
-    ///   3. `[w]` User's destination pool token account
-    ///   4. `[w]` Manager fee account
-    ///   5. `[w]` Referrer fee account
-    ///   6. `[w]` Pool token mint
-    ///   7. `[]` System Program
-    ///   8. `[]` Token Program
-    ///  9. `[]` Native mint (wSOL)
-    ///  10. `[w]` wSOL token account owned by the user
-    ///  11. `[w]` Transient wSOL token account
-    ///  12. `[w]` Session Program Signer
-    ///  13. `[s]` Payer (Paymaster)
-    ///  14. `[s]` (Optional) Stake pool SOL deposit authority
+    ///   4. `[w]` User's destination pool token account (ATA)
+    ///   5. `[w]` Manager fee account
+    ///   6. `[w]` Referrer fee account
+    ///   7. `[w]` Pool token mint
+    ///   8. `[]` System Program
+    ///   9. `[]` Token Program
+    ///  10. `[]` Native mint (wSOL)
+    ///  11. `[w]` wSOL token account owned by the user
+    ///  12. `[w]` Transient wSOL token account
+    ///  13. `[w]` Session Program Signer
+    ///  14. `[s]` Payer (Paymaster)
+    ///  15. `[]` User wallet (owner of the ATA)
+    ///  16. `[s]` (Optional) Stake pool SOL deposit authority
+    ///  17. `[]` Associated Token Program
     DepositWsolWithSession {
         /// Amount of lamports to deposit
         lamports_in: u64,
@@ -780,7 +782,11 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Token program id
     ///  12. `[]` Native mint (wSOL)
     ///  13. `[w]` Session Program Signer
-    ///  14. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  14. `[s, w]` Payer (for ATA creation if needed)
+    ///  15. `[]` User wallet (owner of the ATA)
+    ///  16. `[]` System Program
+    ///  17. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  18. `[]` Associated Token Program
     WithdrawWsolWithSession {
         /// Pool tokens to burn in exchange for lamports
         pool_tokens_in: u64,
@@ -2714,6 +2720,7 @@ pub fn deposit_wsol_with_session(
     transient_wsol_account: &Pubkey,
     program_signer: &Pubkey,
     payer: &Pubkey,
+    user_wallet: &Pubkey,
     sol_deposit_authority: Option<&Pubkey>,
     lamports_in: u64,
     minimum_pool_tokens_out: u64,
@@ -2734,11 +2741,14 @@ pub fn deposit_wsol_with_session(
         AccountMeta::new(*transient_wsol_account, false),
         AccountMeta::new(*program_signer, false),
         AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(*user_wallet, false),
     ];
 
     if let Some(sol_deposit_authority) = sol_deposit_authority {
         accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
     }
+
+    accounts.push(AccountMeta::new_readonly(spl_associated_token_account::id(), false));
 
     let data = borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession {
         lamports_in,
@@ -2767,6 +2777,8 @@ pub fn withdraw_wsol_with_session(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     program_signer: &Pubkey,
+    payer: &Pubkey,
+    user_wallet: &Pubkey,
     sol_withdraw_authority: Option<&Pubkey>,
     pool_tokens_in: u64,
     minimum_lamports_out: u64,
@@ -2786,11 +2798,17 @@ pub fn withdraw_wsol_with_session(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(native_mint::id(), false),
         AccountMeta::new(*program_signer, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(*user_wallet, false),
+        AccountMeta::new_readonly(system_program::id(), false),
     ];
 
     if let Some(sol_withdraw_authority) = sol_withdraw_authority {
         accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
     }
+
+    // Associated Token Program must be last - only needed in transaction for CPI routing
+    accounts.push(AccountMeta::new_readonly(spl_associated_token_account::id(), false));
 
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession {
         pool_tokens_in,

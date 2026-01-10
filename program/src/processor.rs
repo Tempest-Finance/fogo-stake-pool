@@ -2685,6 +2685,7 @@ impl Processor {
         let wsol_transient_info = next_account_info(account_info_iter)?;
         let program_signer_info = next_account_info(account_info_iter)?;
         let payer_info = next_account_info(account_info_iter)?;
+        let user_wallet_info = next_account_info(account_info_iter)?;
 
         let sol_deposit_authority_info = next_account_info(account_info_iter);
 
@@ -2797,7 +2798,7 @@ impl Processor {
             &[program_signer_seeds],
         )?;
 
-        // Refund rent to payer
+        // Refund transient wSOL rent to payer
         let rent_lamports = rent
             .minimum_balance(spl_token::state::Account::LEN)
             .max(1);
@@ -2812,12 +2813,53 @@ impl Processor {
             &[program_signer_seeds],
         )?;
 
-        // Deposit the unwrapped SOL into the stake pool's reserve stake account
+        // Verify dest_user_pool_info is the correct ATA for user_wallet
+        let expected_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+            user_wallet_info.key,
+            pool_mint_info.key,
+            token_program_info.key,
+        );
+        if *dest_user_pool_info.key != expected_ata {
+            msg!("dest_user_pool is not the ATA for user_wallet");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let ata_creation_cost = rent
+            .minimum_balance(spl_token::state::Account::LEN)
+            .saturating_sub(dest_user_pool_info.lamports());
+
+        if deposit_lamports < ata_creation_cost {
+            msg!("Deposit too small to cover ATA rent");
+            return Err(StakePoolError::DepositTooSmall.into());
+        }
+
+        if ata_creation_cost > 0 {
+            invoke_signed(
+                &spl_associated_token_account::instruction::create_associated_token_account_idempotent(
+                    program_signer_info.key,
+                    user_wallet_info.key,
+                    pool_mint_info.key,
+                    token_program_info.key,
+                ),
+                &[
+                    program_signer_info.clone(),
+                    dest_user_pool_info.clone(),
+                    user_wallet_info.clone(),
+                    pool_mint_info.clone(),
+                    system_program_info.clone(),
+                    token_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+        }
+
+        let effective_deposit = deposit_lamports - ata_creation_cost;
+
         invoke_signed(
             &system_instruction::transfer(
                 program_signer_info.key,
                 reserve_stake_account_info.key,
-                deposit_lamports,
+                effective_deposit,
             ),
             &[
                 system_program_info.clone(),
@@ -2826,8 +2868,6 @@ impl Processor {
             ],
             &[program_signer_seeds],
         )?;
-
-        // Regular `deposit_sol` processing
 
         let mut new_accounts = vec![
             stake_pool_info.clone(),
@@ -2849,7 +2889,7 @@ impl Processor {
         Self::process_deposit_sol(
             program_id,
             &new_accounts,
-            deposit_lamports,
+            effective_deposit,
             minimum_pool_tokens_out,
             // the SOL transfer has already been done above
             true,
@@ -3363,6 +3403,7 @@ impl Processor {
         minimum_lamports_out: Option<u64>,
     ) -> ProgramResult {
         use fogo_sessions_sdk::session::Session;
+        use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
         use solana_program::program_pack::Pack;
 
         let account_info_iter = &mut accounts.iter();
@@ -3382,6 +3423,9 @@ impl Processor {
         // wsol-specific accounts
         let wsol_mint_info = next_account_info(account_info_iter)?;
         let program_signer_info = next_account_info(account_info_iter)?;
+        let _payer_info = next_account_info(account_info_iter)?; // Used for tx fees by runtime
+        let user_wallet_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
 
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
 
@@ -3392,11 +3436,6 @@ impl Processor {
 
         if *wsol_mint_info.owner != *token_program_info.key {
             msg!("`wsol_mint` is not owned by the token program");
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        if *destination_account_info.owner != *token_program_info.key {
-            msg!("`destination_account` is not owned by the token program");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -3411,28 +3450,41 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
-        // Verify destination_account_info is a valid wSOL token account owned by the user
-        // This is more flexible than requiring the ATA specifically
-        let destination_token_data =
-            spl_token::state::Account::unpack(&destination_account_info.data.borrow())?;
-        if destination_token_data.mint != spl_token::native_mint::id() {
-            msg!("`destination_account` is not a wSOL token account");
-            return Err(ProgramError::InvalidAccountData);
+        let (expected_program_signer, program_signer_bump) =
+            Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+
+        if *program_signer_info.key != expected_program_signer {
+            msg!("`program_signer` does not match expected address");
+            return Err(ProgramError::InvalidSeeds);
         }
-        if destination_token_data.owner != user_pubkey {
-            msg!("`destination_account` is not owned by the session user");
+
+        let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
+
+        let rent = Rent::get()?;
+
+        // Verify destination_account_info is the correct wSOL ATA for user_wallet
+        let expected_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
+            user_wallet_info.key,
+            wsol_mint_info.key,
+            token_program_info.key,
+        );
+        if *destination_account_info.key != expected_ata {
+            msg!("destination_account is not the wSOL ATA for user_wallet");
             return Err(ProgramError::InvalidAccountData);
         }
 
-        // Regular `withdraw_sol` processing
-        {
+        let ata_creation_cost = rent
+            .minimum_balance(spl_token::state::Account::LEN)
+            .saturating_sub(destination_account_info.lamports());
+
+        let withdraw_lamports = {
             let mut accounts: Vec<AccountInfo> = vec![
                 stake_pool_info.clone(),
                 withdraw_authority_info.clone(),
                 signer_or_session_info.clone(),
                 burn_from_pool_info.clone(),
                 reserve_stake_info.clone(),
-                destination_account_info.clone(),
+                program_signer_info.clone(),
                 manager_fee_info.clone(),
                 pool_mint_info.clone(),
                 clock_info.clone(),
@@ -3450,10 +3502,53 @@ impl Processor {
 
             accounts.push(program_signer_info.clone());
 
+            let balance_before = program_signer_info.lamports();
             Self::process_withdraw_sol(program_id, &accounts, pool_tokens, minimum_lamports_out)?;
+            program_signer_info.lamports().saturating_sub(balance_before)
+        };
+
+        if ata_creation_cost > 0 {
+            if withdraw_lamports < ata_creation_cost {
+                msg!("Withdrawal too small to cover ATA rent");
+                return Err(StakePoolError::WithdrawalTooSmall.into());
+            }
+
+            invoke_signed(
+                &spl_associated_token_account::instruction::create_associated_token_account_idempotent(
+                    program_signer_info.key,
+                    user_wallet_info.key,
+                    wsol_mint_info.key,
+                    token_program_info.key,
+                ),
+                &[
+                    program_signer_info.clone(),
+                    destination_account_info.clone(),
+                    user_wallet_info.clone(),
+                    wsol_mint_info.clone(),
+                    system_program_info.clone(),
+                    token_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
         }
 
-        // Sync the native account to update its wSOL balance
+        let user_lamports = withdraw_lamports.saturating_sub(ata_creation_cost);
+        if user_lamports > 0 {
+            invoke_signed(
+                &system_instruction::transfer(
+                    program_signer_info.key,
+                    destination_account_info.key,
+                    user_lamports,
+                ),
+                &[
+                    program_signer_info.clone(),
+                    destination_account_info.clone(),
+                    system_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+        }
+
         invoke(
             &spl_token::instruction::sync_native(
                 token_program_info.key,
