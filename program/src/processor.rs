@@ -3659,7 +3659,6 @@ impl Processor {
         // wsol-specific accounts
         let wsol_mint_info = next_account_info(account_info_iter)?;
         let program_signer_info = next_account_info(account_info_iter)?;
-        let _payer_info = next_account_info(account_info_iter)?; // Used for tx fees by runtime
         let user_wallet_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
 

@@ -782,11 +782,10 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Token program id
     ///  12. `[]` Native mint (wSOL)
     ///  13. `[w]` Session Program Signer
-    ///  14. `[s, w]` Payer (for ATA creation if needed)
-    ///  15. `[]` User wallet (owner of the ATA)
-    ///  16. `[]` System Program
-    ///  17. `[s]` (Optional) Stake pool SOL withdraw authority
-    ///  18. `[]` Associated Token Program
+    ///  14. `[]` User wallet (owner of the ATA)
+    ///  15. `[]` System Program
+    ///  16. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  17. `[]` Associated Token Program
     WithdrawWsolWithSession {
         /// Pool tokens to burn in exchange for lamports
         pool_tokens_in: u64,
@@ -2820,7 +2819,6 @@ pub fn withdraw_wsol_with_session(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     program_signer: &Pubkey,
-    payer: &Pubkey,
     user_wallet: &Pubkey,
     sol_withdraw_authority: Option<&Pubkey>,
     pool_tokens_in: u64,
@@ -2841,7 +2839,6 @@ pub fn withdraw_wsol_with_session(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(native_mint::id(), false),
         AccountMeta::new(*program_signer, false),
-        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(*user_wallet, false),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
