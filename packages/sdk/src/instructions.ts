@@ -42,6 +42,7 @@ export type StakePoolInstructionType
     | 'DepositWsolWithSession'
     | 'WithdrawWsolWithSession'
     | 'WithdrawStakeWithSession'
+    | 'WithdrawFromStakeAccountWithSession'
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -234,6 +235,15 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       BufferLayout.u8('instruction'),
       BufferLayout.ns64('poolTokensIn'),
       BufferLayout.ns64('minimumLamportsOut'),
+      BufferLayout.ns64('userStakeSeed'),
+    ]),
+  },
+  WithdrawFromStakeAccountWithSession: {
+    index: 30,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.ns64('lamports'),
+      BufferLayout.ns64('userStakeSeed'),
     ]),
   },
 })
@@ -397,7 +407,6 @@ export type WithdrawWsolWithSessionParams = {
   userWallet: PublicKey
   poolTokensIn: number
   minimumLamportsOut: number
-  payer?: PublicKey
   solWithdrawAuthority?: PublicKey
 }
 
@@ -407,6 +416,7 @@ export type WithdrawStakeWithSessionParams = {
   validatorList: PublicKey
   withdrawAuthority: PublicKey
   stakeToSplit: PublicKey
+  /** The stake account PDA that will receive the withdrawn stake (derived from user wallet + seed) */
   stakeToReceive: PublicKey
   /** The session signer (user or session) - used as both stake authority and transfer authority */
   sessionSigner: PublicKey
@@ -416,8 +426,26 @@ export type WithdrawStakeWithSessionParams = {
   tokenProgramId: PublicKey
   /** The program signer PDA derived from PROGRAM_SIGNER_SEED */
   programSigner: PublicKey
+  /** The payer for stake account rent (typically the paymaster) */
+  payer: PublicKey
   poolTokensIn: number
   minimumLamportsOut: number
+  /** Seed used to derive the user stake PDA */
+  userStakeSeed: number
+}
+
+export type WithdrawFromStakeAccountWithSessionParams = {
+  programId: PublicKey
+  /** The user stake account PDA to withdraw from */
+  userStakeAccount: PublicKey
+  /** The user's wallet to receive the withdrawn SOL */
+  userWallet: PublicKey
+  /** The session signer (user or session) */
+  sessionSigner: PublicKey
+  /** Seed used to derive the user stake PDA */
+  userStakeSeed: number
+  /** Lamports to withdraw (use Number.MAX_SAFE_INTEGER for full withdrawal) */
+  lamports: number
 }
 
 /**
@@ -1143,6 +1171,7 @@ export class StakePoolInstruction {
 
   /**
    * Creates a transaction instruction to withdraw WSOL from a stake pool using a session.
+   * Rent for ATA creation (if needed) is paid from the withdrawal amount.
    */
   static withdrawWsolWithSession(
     params: WithdrawWsolWithSessionParams,
@@ -1169,7 +1198,6 @@ export class StakePoolInstruction {
 
       { pubkey: params.wsolMint, isSigner: false, isWritable: false },
       { pubkey: params.programSigner, isSigner: false, isWritable: true },
-      { pubkey: params.payer ?? params.userTransferAuthority, isSigner: true, isWritable: true },
       { pubkey: params.userWallet, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ]
@@ -1194,12 +1222,14 @@ export class StakePoolInstruction {
 
   /**
    * Creates a transaction instruction to withdraw stake from a stake pool using a Fogo session.
+   * The stake account is created as a PDA and rent is paid by the payer (typically paymaster).
    */
   static withdrawStakeWithSession(params: WithdrawStakeWithSessionParams): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStakeWithSession
     const data = encodeData(type, {
       poolTokensIn: params.poolTokensIn,
       minimumLamportsOut: params.minimumLamportsOut,
+      userStakeSeed: params.userStakeSeed,
     })
 
     const keys = [
@@ -1217,6 +1247,35 @@ export class StakePoolInstruction {
       { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
       { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
       { pubkey: params.programSigner, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: params.payer, isSigner: true, isWritable: true },
+    ]
+
+    return new TransactionInstruction({
+      programId: params.programId,
+      keys,
+      data,
+    })
+  }
+
+  /**
+   * Creates a transaction instruction to withdraw SOL from a deactivated user stake account using a Fogo session.
+   * The stake account must be fully deactivated (inactive).
+   */
+  static withdrawFromStakeAccountWithSession(params: WithdrawFromStakeAccountWithSessionParams): TransactionInstruction {
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawFromStakeAccountWithSession
+    const data = encodeData(type, {
+      lamports: params.lamports,
+      userStakeSeed: params.userStakeSeed,
+    })
+
+    const keys = [
+      { pubkey: params.userStakeAccount, isSigner: false, isWritable: true },
+      { pubkey: params.userWallet, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: params.sessionSigner, isSigner: true, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
     ]
 
     return new TransactionInstruction({
