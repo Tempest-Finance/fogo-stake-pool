@@ -33,6 +33,9 @@ const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 /// Seed for ephemeral stake account
 const EPHEMERAL_STAKE_SEED_PREFIX: &[u8] = b"ephemeral";
 
+/// Seed for user stake account created during session withdrawal
+pub const USER_STAKE_SEED_PREFIX: &[u8] = b"user_stake";
+
 /// Minimum amount of staked lamports required in a validator stake account to
 /// allow for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
@@ -155,6 +158,23 @@ pub fn find_ephemeral_stake_program_address(
         &[
             EPHEMERAL_STAKE_SEED_PREFIX,
             stake_pool_address.as_ref(),
+            &seed.to_le_bytes(),
+        ],
+        program_id,
+    )
+}
+
+/// Generates the user stake account PDA for session-based withdrawals.
+/// The PDA is derived from the user's wallet and a unique seed.
+pub fn find_user_stake_program_address(
+    program_id: &Pubkey,
+    user_wallet: &Pubkey,
+    seed: u64,
+) -> (Pubkey, u8) {
+    Pubkey::find_program_address(
+        &[
+            USER_STAKE_SEED_PREFIX,
+            user_wallet.as_ref(),
             &seed.to_le_bytes(),
         ],
         program_id,
