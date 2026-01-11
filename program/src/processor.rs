@@ -3375,10 +3375,13 @@ impl Processor {
                 let stake_space = stake::state::StakeStateV2::size_of();
                 let stake_rent = Rent::get()?.minimum_balance(stake_space);
 
-                if payer_info.lamports() < stake_rent {
+                // Only fund the missing rent (account may already have some lamports)
+                let required_rent = stake_rent.saturating_sub(stake_split_to.lamports());
+
+                if required_rent > 0 && payer_info.lamports() < required_rent {
                     msg!(
                         "Payer has insufficient funds for rent. Required: {}, available: {}",
-                        stake_rent,
+                        required_rent,
                         payer_info.lamports()
                     );
                     return Err(ProgramError::InsufficientFunds);
@@ -3397,19 +3400,21 @@ impl Processor {
                     stake_space,
                 )?;
 
-                // Fund the PDA with rent from payer
-                invoke(
-                    &system_instruction::transfer(
-                        payer_info.key,
-                        stake_split_to.key,
-                        stake_rent,
-                    ),
-                    &[
-                        payer_info.clone(),
-                        stake_split_to.clone(),
-                        system_program_info.clone(),
-                    ],
-                )?;
+                // Fund the PDA with only the missing rent from payer
+                if required_rent > 0 {
+                    invoke(
+                        &system_instruction::transfer(
+                            payer_info.key,
+                            stake_split_to.key,
+                            required_rent,
+                        ),
+                        &[
+                            payer_info.clone(),
+                            stake_split_to.clone(),
+                            system_program_info.clone(),
+                        ],
+                    )?;
+                }
 
                 // Split is reduced by rent; stake balance = rent + split = withdraw_lamports
                 let split_lamports = withdraw_lamports.saturating_sub(stake_rent);
