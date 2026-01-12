@@ -3309,8 +3309,8 @@ impl Processor {
         };
 
         // WithdrawStakeWithSession path - create user stake account PDA
-        // Tuple: (user_pubkey, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports, required_rent)
-        let session_pda_info: Option<(Pubkey, u8, AccountInfo, AccountInfo, u64, u64)> =
+        // Tuple: (user_pubkey, is_user_payer, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports, required_rent)
+        let session_pda_info: Option<(Pubkey, bool, u8, AccountInfo, AccountInfo, u64, u64)> =
             if let Some(seed) = user_stake_seed {
                 use crate::USER_STAKE_SEED_PREFIX;
                 use fogo_sessions_sdk::session::Session;
@@ -3418,13 +3418,14 @@ impl Processor {
 
                 // Split is reduced by rent; stake balance = rent + split = withdraw_lamports
                 let split_lamports = withdraw_lamports.saturating_sub(stake_rent);
+                let is_user_payer = *payer_info.key == user_pubkey;
 
-                Some((user_pubkey, program_signer_bump, program_signer_info.clone(), signer_or_session_info.clone(), split_lamports, required_rent))
+                Some((user_pubkey, is_user_payer, program_signer_bump, program_signer_info.clone(), signer_or_session_info.clone(), split_lamports, required_rent))
             } else {
                 None
             };
 
-        let actual_split_amount = if let Some((_, _, _, _, split_lamports, _)) = &session_pda_info {
+        let actual_split_amount = if let Some((_, _, _, _, _, split_lamports, _)) = &session_pda_info {
             *split_lamports
         } else {
             withdraw_lamports
@@ -3441,7 +3442,7 @@ impl Processor {
         )?;
 
         // WithdrawStakeWithSession path - use session for token ops, set PDA as its own authority
-        if let Some((user_pubkey, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports, required_rent)) = session_pda_info {
+        if let Some((user_pubkey, is_user_payer, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports, required_rent)) = session_pda_info {
             use fogo_sessions_sdk::token::instruction::{burn, transfer_checked};
             use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
             use solana_program::program_pack::Pack;
@@ -3454,9 +3455,12 @@ impl Processor {
                 return Err(ProgramError::InvalidAccountData);
             }
 
-            // Burn tokens worth what user actually receives (split from pool + rent from payer)
             let pool_tokens_burnt = stake_pool
-                .calc_pool_tokens_for_deposit(split_lamports.saturating_add(required_rent))
+                .calc_pool_tokens_for_deposit(if is_user_payer {
+                  split_lamports
+                } else {
+                  split_lamports.saturating_add(required_rent)
+                })
                 .ok_or(StakePoolError::CalculationFailure)?;
 
             let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
