@@ -6,8 +6,9 @@ PROGRAM_ID := SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
 KEYPAIR    := .keys/$(PROGRAM_ID).json
 PROGRAM_SO := target/deploy/spl_stake_pool.so
 
-# From workspace.metadata.toolchains
+# Toolchain versions (used by CI)
 NIGHTLY := +nightly-2025-02-16
+SOLANA_CLI := 2.3.4
 
 # Cluster configuration
 CLUSTER ?= testnet
@@ -25,6 +26,13 @@ C_RESET  := \033[0m
 # ══════════════════════════════════════════════════════════════════════════════
 
 .DEFAULT_GOAL := help
+
+# CI helper targets (output version strings for GitHub Actions)
+rust-toolchain-nightly:
+	@echo nightly-2025-02-16
+
+solana-cli-version:
+	@echo $(SOLANA_CLI)
 
 help: ## Show this help
 	@printf "$(YELLOW)%s:$(NC)\n" 'Available commands'
