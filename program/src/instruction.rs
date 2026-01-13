@@ -782,16 +782,58 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Token program id
     ///  12. `[]` Native mint (wSOL)
     ///  13. `[w]` Session Program Signer
-    ///  14. `[s, w]` Payer (for ATA creation if needed)
-    ///  15. `[]` User wallet (owner of the ATA)
-    ///  16. `[]` System Program
-    ///  17. `[s]` (Optional) Stake pool SOL withdraw authority
-    ///  18. `[]` Associated Token Program
+    ///  14. `[]` User wallet (owner of the ATA)
+    ///  15. `[]` System Program
+    ///  16. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  17. `[]` Associated Token Program
     WithdrawWsolWithSession {
         /// Pool tokens to burn in exchange for lamports
         pool_tokens_in: u64,
         /// Minimum amount of lamports that must be received
         minimum_lamports_out: u64,
+    },
+
+    ///   Withdraw stake via a Fogo session.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Validator or reserve stake account to split
+    ///   4. `[w]` Uninitialized stake account to receive withdrawal (must be user stake PDA)
+    ///   5. `[s]` Signer or Session (user_stake_authority)
+    ///   6. `[]` User transfer authority (same as account 5 for session path)
+    ///   7. `[w]` User account with pool tokens to burn from
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` Clock sysvar
+    ///  11. `[]` Token program id
+    ///  12. `[]` Stake program id
+    ///  13. `[]` Program signer PDA
+    ///  14. `[]` System program
+    ///  15. `[s, w]` Payer (pays rent for stake account creation)
+    WithdrawStakeWithSession {
+        /// Pool tokens to burn in exchange for stake
+        pool_tokens_in: u64,
+        /// Minimum amount of lamports that must be received
+        minimum_lamports_out: u64,
+        /// Seed for the user stake account PDA
+        user_stake_seed: u64,
+    },
+
+    ///   Withdraw lamports from a user stake account via a Fogo session.
+    ///   Used after cooldown period to convert deactivated stake to SOL.
+    ///   User receives full stake balance (payer's rent contribution compensates for reduced split).
+    ///
+    ///   0. `[w]` User stake account (must be user stake PDA, fully deactivated)
+    ///   1. `[w]` Recipient account for withdrawn lamports (must be session user)
+    ///   2. `[]` Clock sysvar
+    ///   3. `[]` Stake history sysvar
+    ///   4. `[s]` Signer or Session (stake authority)
+    WithdrawFromStakeAccountWithSession {
+        /// Amount of lamports to withdraw (u64::MAX for full withdrawal)
+        lamports: u64,
+        /// Seed for the user stake account PDA
+        user_stake_seed: u64,
     },
 }
 
@@ -2777,7 +2819,6 @@ pub fn withdraw_wsol_with_session(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     program_signer: &Pubkey,
-    payer: &Pubkey,
     user_wallet: &Pubkey,
     sol_withdraw_authority: Option<&Pubkey>,
     pool_tokens_in: u64,
@@ -2798,7 +2839,6 @@ pub fn withdraw_wsol_with_session(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(native_mint::id(), false),
         AccountMeta::new(*program_signer, false),
-        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(*user_wallet, false),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
@@ -2813,6 +2853,90 @@ pub fn withdraw_wsol_with_session(
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession {
         pool_tokens_in,
         minimum_lamports_out,
+    })
+    .unwrap();
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+/// Creates instruction to withdraw stake from a stake pool using a session signer.
+pub fn withdraw_stake_with_session(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list: &Pubkey,
+    withdraw_authority: &Pubkey,
+    stake_to_split: &Pubkey,
+    stake_to_receive: &Pubkey,
+    session_signer: &Pubkey,
+    burn_from_pool: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    program_signer: &Pubkey,
+    payer: &Pubkey,
+    pool_tokens_in: u64,
+    minimum_lamports_out: u64,
+    user_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new(*stake_to_split, false),
+        AccountMeta::new(*stake_to_receive, false),
+        AccountMeta::new_readonly(*session_signer, true),  // user_stake_authority (signer_or_session)
+        AccountMeta::new_readonly(*session_signer, false), // user_transfer_authority (not used in session path)
+        AccountMeta::new(*burn_from_pool, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(*program_signer, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new(*payer, true),
+    ];
+
+    let data = borsh::to_vec(&StakePoolInstruction::WithdrawStakeWithSession {
+        pool_tokens_in,
+        minimum_lamports_out,
+        user_stake_seed,
+    })
+    .unwrap();
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+/// Creates instruction to withdraw lamports from a user stake account using a session signer.
+/// Used after the cooldown period to convert deactivated stake to SOL.
+pub fn withdraw_from_stake_account_with_session(
+    program_id: &Pubkey,
+    user_stake_account: &Pubkey,
+    recipient: &Pubkey,
+    session_signer: &Pubkey,
+    lamports: u64,
+    user_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*user_stake_account, false),
+        AccountMeta::new(*recipient, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(*session_signer, true),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+
+    let data = borsh::to_vec(&StakePoolInstruction::WithdrawFromStakeAccountWithSession {
+        lamports,
+        user_stake_seed,
     })
     .unwrap();
 

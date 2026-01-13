@@ -40,6 +40,7 @@ import {
   findMetadataAddress,
   findStakeProgramAddress,
   findTransientStakeProgramAddress,
+  findUserStakeProgramAddress,
   findWithdrawAuthorityProgramAddress,
   findWsolTransientProgramAddress,
   getValidatorListAccount,
@@ -66,6 +67,14 @@ export {
   ValidatorListLayout,
   ValidatorStakeInfoLayout,
 } from './layouts'
+export {
+  findEphemeralStakeProgramAddress,
+  findStakeProgramAddress,
+  findTransientStakeProgramAddress,
+  findUserStakeProgramAddress,
+  findWithdrawAuthorityProgramAddress,
+  findWsolTransientProgramAddress,
+} from './utils'
 
 export interface ValidatorListAccount {
   pubkey: PublicKey
@@ -300,23 +309,30 @@ export async function depositWsolWithSession(
   referrerTokenAccount?: PublicKey,
   depositAuthority?: PublicKey,
   payer?: PublicKey,
+  /**
+   * Skip WSOL balance validation. Set to true when adding wrap instructions
+   * in the same transaction that will fund the WSOL account before deposit.
+   */
+  skipBalanceCheck: boolean = false,
 ) {
   const wsolTokenAccount = getAssociatedTokenAddressSync(NATIVE_MINT, userPubkey)
 
-  const tokenAccountInfo = await connection.getTokenAccountBalance(
-    wsolTokenAccount,
-    'confirmed',
-  )
-  const wsolBalance = tokenAccountInfo
-    ? parseInt(tokenAccountInfo.value.amount)
-    : 0
-
-  if (wsolBalance < lamports) {
-    throw new Error(
-      `Not enough WSOL to deposit into pool. Maximum deposit amount is ${lamportsToSol(
-        wsolBalance,
-      )} WSOL.`,
+  if (!skipBalanceCheck) {
+    const tokenAccountInfo = await connection.getTokenAccountBalance(
+      wsolTokenAccount,
+      'confirmed',
     )
+    const wsolBalance = tokenAccountInfo
+      ? parseInt(tokenAccountInfo.value.amount)
+      : 0
+
+    if (wsolBalance < lamports) {
+      throw new Error(
+        `Not enough WSOL to deposit into pool. Maximum deposit amount is ${lamportsToSol(
+          wsolBalance,
+        )} WSOL.`,
+      )
+    }
   }
 
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
@@ -818,6 +834,7 @@ export async function withdrawSol(
 
 /**
  * Creates instructions required to withdraw wSOL from a stake pool.
+ * Rent for ATA creation (if needed) is paid from the withdrawal amount.
  */
 export async function withdrawWsolWithSession(
   connection: Connection,
@@ -827,7 +844,6 @@ export async function withdrawWsolWithSession(
   amount: number,
   minimumLamportsOut: number = 0,
   solWithdrawAuthority?: PublicKey,
-  payer?: PublicKey,
 ) {
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
@@ -878,7 +894,6 @@ export async function withdrawWsolWithSession(
       wsolMint: NATIVE_MINT,
       programSigner,
       userWallet: userPubkey,
-      payer,
       poolTokensIn: poolTokens,
       minimumLamportsOut,
     }),
@@ -887,6 +902,301 @@ export async function withdrawWsolWithSession(
   return {
     instructions,
     signers,
+  }
+}
+
+/**
+ * Finds the next available seed for creating a user stake PDA.
+ * Scans from startSeed until an unused PDA is found.
+ *
+ * @param connection - Solana connection
+ * @param programId - The stake pool program ID
+ * @param userPubkey - User's wallet (used for PDA derivation)
+ * @param startSeed - Starting seed to search from (default: 0)
+ * @param maxSeed - Maximum seed to check before giving up (default: 1000)
+ * @returns The next available seed
+ * @throws Error if no available seed found within maxSeed
+ */
+export async function findNextUserStakeSeed(
+  connection: Connection,
+  programId: PublicKey,
+  userPubkey: PublicKey,
+  startSeed: number = 0,
+  maxSeed: number = 1000,
+): Promise<number> {
+  for (let seed = startSeed; seed < startSeed + maxSeed; seed++) {
+    const pda = findUserStakeProgramAddress(programId, userPubkey, seed)
+    const account = await connection.getAccountInfo(pda)
+    if (!account) {
+      return seed
+    }
+  }
+  throw new Error(`No available user stake seed found between ${startSeed} and ${startSeed + maxSeed - 1}`)
+}
+
+/**
+ * Represents a user stake account with its details
+ */
+export interface UserStakeAccount {
+  /** The stake account public key (PDA) */
+  pubkey: PublicKey
+  /** The seed used to derive this PDA */
+  seed: number
+  /** Lamports in the stake account */
+  lamports: number
+  /** Parsed stake state */
+  state: 'inactive' | 'activating' | 'active' | 'deactivating'
+  /** Validator vote account (if delegated) */
+  voter?: PublicKey
+  /** Activation epoch (if active/activating) */
+  activationEpoch?: number
+  /** Deactivation epoch (if deactivating) */
+  deactivationEpoch?: number
+}
+
+/**
+ * Fetches all user stake accounts created via WithdrawStakeWithSession.
+ * These are PDAs derived from [b"user_stake", user_wallet, seed].
+ *
+ * @param connection - Solana connection
+ * @param programId - The stake pool program ID
+ * @param userPubkey - User's wallet address
+ * @param maxSeed - Maximum seed to check (default: 100)
+ * @returns Array of user stake accounts with their details
+ */
+export async function getUserStakeAccounts(
+  connection: Connection,
+  programId: PublicKey,
+  userPubkey: PublicKey,
+  maxSeed: number = 100,
+): Promise<UserStakeAccount[]> {
+  const stakeAccounts: UserStakeAccount[] = []
+  const currentEpoch = (await connection.getEpochInfo()).epoch
+
+  for (let seed = 0; seed < maxSeed; seed++) {
+    const pda = findUserStakeProgramAddress(programId, userPubkey, seed)
+    const accountInfo = await connection.getAccountInfo(pda)
+
+    if (!accountInfo) {
+      continue // Skip empty slots, there might be gaps
+    }
+
+    // Check if owned by stake program
+    if (!accountInfo.owner.equals(StakeProgram.programId)) {
+      continue
+    }
+
+    // Parse stake account data
+    const stakeAccount: UserStakeAccount = {
+      pubkey: pda,
+      seed,
+      lamports: accountInfo.lamports,
+      state: 'inactive',
+    }
+
+    try {
+      // Parse the stake account to get delegation info
+      const parsedAccount = await connection.getParsedAccountInfo(pda)
+      if (parsedAccount.value && 'parsed' in parsedAccount.value.data) {
+        const parsed = parsedAccount.value.data.parsed
+        if (parsed.type === 'delegated' && parsed.info?.stake?.delegation) {
+          const delegation = parsed.info.stake.delegation
+          stakeAccount.voter = new PublicKey(delegation.voter)
+          stakeAccount.activationEpoch = Number(delegation.activationEpoch)
+          stakeAccount.deactivationEpoch = Number(delegation.deactivationEpoch)
+
+          // Determine state based on epochs
+          const activationEpoch = stakeAccount.activationEpoch
+          const deactivationEpoch = stakeAccount.deactivationEpoch
+
+          if (deactivationEpoch !== undefined && deactivationEpoch < Number.MAX_SAFE_INTEGER && deactivationEpoch <= currentEpoch) {
+            stakeAccount.state = 'inactive'
+          } else if (deactivationEpoch !== undefined && deactivationEpoch < Number.MAX_SAFE_INTEGER) {
+            stakeAccount.state = 'deactivating'
+          } else if (activationEpoch !== undefined && activationEpoch <= currentEpoch) {
+            stakeAccount.state = 'active'
+          } else {
+            stakeAccount.state = 'activating'
+          }
+        }
+      }
+    } catch {
+      // If parsing fails, keep default 'inactive' state
+    }
+
+    stakeAccounts.push(stakeAccount)
+  }
+
+  return stakeAccounts
+}
+
+/**
+ * Withdraws stake from a stake pool using a Fogo session.
+ *
+ * The on-chain program creates stake account PDAs. The rent for these accounts
+ * is paid by the payer (typically the paymaster), not deducted from the user's withdrawal.
+ *
+ * @param connection - Solana connection
+ * @param stakePoolAddress - The stake pool to withdraw from
+ * @param signerOrSession - The session signer public key
+ * @param userPubkey - User's wallet (used for PDA derivation and token ownership)
+ * @param payer - Payer for stake account rent (typically paymaster)
+ * @param amount - Amount of pool tokens to withdraw
+ * @param userStakeSeedStart - Starting seed for user stake PDA derivation (default: 0)
+ * @param useReserve - Whether to withdraw from reserve (default: false)
+ * @param voteAccountAddress - Optional specific validator to withdraw from
+ * @param minimumLamportsOut - Minimum lamports to receive (slippage protection)
+ * @param validatorComparator - Optional comparator for validator selection
+ */
+export async function withdrawStakeWithSession(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  signerOrSession: PublicKey,
+  userPubkey: PublicKey,
+  payer: PublicKey,
+  amount: number,
+  userStakeSeedStart: number = 0,
+  useReserve = false,
+  voteAccountAddress?: PublicKey,
+  minimumLamportsOut: number = 0,
+  validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
+) {
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
+  const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
+  const stakePool = stakePoolAccount.account.data
+  const poolTokens = solToLamports(amount)
+  const poolAmount = new BN(poolTokens)
+
+  const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
+  const tokenAccount = await getAccount(connection, poolTokenAccount)
+
+  if (tokenAccount.amount < poolTokens) {
+    throw new Error(
+      `Not enough token balance to withdraw ${amount} pool tokens.
+          Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
+    )
+  }
+
+  const [programSigner] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fogo_session_program_signer')],
+    stakePoolProgramId,
+  )
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    stakePoolProgramId,
+    stakePoolAddress,
+  )
+
+  const stakeAccountRentExemption = await connection.getMinimumBalanceForRentExemption(StakeProgram.space)
+
+  // Determine which stake accounts to withdraw from
+  const withdrawAccounts: WithdrawAccount[] = []
+
+  if (useReserve) {
+    withdrawAccounts.push({
+      stakeAddress: stakePool.reserveStake,
+      voteAddress: undefined,
+      poolAmount,
+    })
+  } else if (voteAccountAddress) {
+    const stakeAccountAddress = await findStakeProgramAddress(
+      stakePoolProgramId,
+      voteAccountAddress,
+      stakePoolAddress,
+    )
+    const stakeAccount = await connection.getAccountInfo(stakeAccountAddress)
+    if (!stakeAccount) {
+      throw new Error(`Validator stake account not found for vote address ${voteAccountAddress.toBase58()}`)
+    }
+
+    const availableLamports = new BN(
+      stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
+    )
+    if (availableLamports.lt(new BN(0))) {
+      throw new Error('Invalid Stake Account')
+    }
+    const availableForWithdrawal = calcLamportsWithdrawAmount(
+      stakePool,
+      availableLamports,
+    )
+
+    if (availableForWithdrawal.lt(poolAmount)) {
+      throw new Error(
+        `Not enough lamports available for withdrawal from ${stakeAccountAddress},
+          ${poolAmount} asked, ${availableForWithdrawal} available.`,
+      )
+    }
+    withdrawAccounts.push({
+      stakeAddress: stakeAccountAddress,
+      voteAddress: voteAccountAddress,
+      poolAmount,
+    })
+  } else {
+    // Get the list of accounts to withdraw from automatically
+    withdrawAccounts.push(
+      ...(await prepareWithdrawAccounts(
+        connection,
+        stakePool,
+        stakePoolAddress,
+        poolAmount,
+        validatorComparator,
+        poolTokenAccount.equals(stakePool.managerFeeAccount),
+      )),
+    )
+  }
+
+  const instructions: TransactionInstruction[] = []
+  const stakeAccountPubkeys: PublicKey[] = []
+  const userStakeSeeds: number[] = []
+
+  // Max 5 accounts to prevent an error: "Transaction too large"
+  const maxWithdrawAccounts = 5
+  let i = 0
+
+  for (const withdrawAccount of withdrawAccounts) {
+    if (i >= maxWithdrawAccounts) {
+      break
+    }
+
+    // Derive the stake account PDA for this withdrawal
+    const userStakeSeed = userStakeSeedStart + i
+    const stakeReceiverPubkey = findUserStakeProgramAddress(
+      stakePoolProgramId,
+      userPubkey,
+      userStakeSeed,
+    )
+
+    stakeAccountPubkeys.push(stakeReceiverPubkey)
+    userStakeSeeds.push(userStakeSeed)
+
+    // The on-chain program creates the stake account PDA and rent is paid by payer.
+    instructions.push(
+      StakePoolInstruction.withdrawStakeWithSession({
+        programId: stakePoolProgramId,
+        stakePool: stakePoolAddress,
+        validatorList: stakePool.validatorList,
+        withdrawAuthority,
+        stakeToSplit: withdrawAccount.stakeAddress,
+        stakeToReceive: stakeReceiverPubkey,
+        sessionSigner: signerOrSession,
+        burnFromPool: poolTokenAccount,
+        managerFeeAccount: stakePool.managerFeeAccount,
+        poolMint: stakePool.poolMint,
+        tokenProgramId: stakePool.tokenProgramId,
+        programSigner,
+        payer,
+        poolTokensIn: withdrawAccount.poolAmount.toNumber(),
+        minimumLamportsOut,
+        userStakeSeed,
+      }),
+    )
+    i++
+  }
+
+  return {
+    instructions,
+    stakeAccountPubkeys,
+    userStakeSeeds,
   }
 }
 

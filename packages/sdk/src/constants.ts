@@ -11,9 +11,7 @@ export const METADATA_MAX_URI_LENGTH = 200
 export const STAKE_POOL_PROGRAM_ID = new PublicKey('SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr')
 
 // Public key that identifies the SPL Stake Pool program deployed to devnet.
-export const DEVNET_STAKE_POOL_PROGRAM_ID = new PublicKey(
-  'DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib',
-)
+export const DEVNET_STAKE_POOL_PROGRAM_ID = new PublicKey('DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib')
 
 // Maximum number of validators to update during UpdateValidatorListBalance.
 export const MAX_VALIDATORS_TO_UPDATE = 4
@@ -23,6 +21,9 @@ export const EPHEMERAL_STAKE_SEED_PREFIX = Buffer.from('ephemeral')
 
 // Seed used to derive transient stake accounts.
 export const TRANSIENT_STAKE_SEED_PREFIX = Buffer.from('transient')
+
+// Seed for user stake account created during session withdrawal
+export const USER_STAKE_SEED_PREFIX = Buffer.from('user_stake')
 
 // Minimum amount of staked SOL required in a validator stake account to allow
 // for merges without a mismatch on credits observed

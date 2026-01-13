@@ -5,6 +5,7 @@ import {
   EPHEMERAL_STAKE_SEED_PREFIX,
   METADATA_PROGRAM_ID,
   TRANSIENT_STAKE_SEED_PREFIX,
+  USER_STAKE_SEED_PREFIX,
 } from '../constants'
 
 /**
@@ -98,6 +99,27 @@ export function findMetadataAddress(stakePoolMintAddress: PublicKey) {
   const [publicKey] = PublicKey.findProgramAddressSync(
     [Buffer.from('metadata'), METADATA_PROGRAM_ID.toBuffer(), stakePoolMintAddress.toBuffer()],
     METADATA_PROGRAM_ID,
+  )
+  return publicKey
+}
+
+/**
+ * Generates the user stake account PDA for session-based withdrawals.
+ * The PDA is derived from the user's wallet and a unique seed.
+ */
+export function findUserStakeProgramAddress(
+  programId: PublicKey,
+  userWallet: PublicKey,
+  seed: BN | number,
+) {
+  const seedBN = typeof seed === 'number' ? new BN(seed) : seed
+  const [publicKey] = PublicKey.findProgramAddressSync(
+    [
+      USER_STAKE_SEED_PREFIX,
+      userWallet.toBuffer(),
+      seedBN.toArrayLike(Buffer, 'le', 8),
+    ],
+    programId,
   )
   return publicKey
 }

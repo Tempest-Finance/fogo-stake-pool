@@ -56,7 +56,7 @@ export async function prepareWithdrawAccounts(
   const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList)
   const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList
 
-  if (!validatorList?.validators || validatorList?.validators.length == 0) {
+  if (!validatorList?.validators || validatorList?.validators.length === 0) {
     throw new Error('No accounts found')
   }
 
@@ -84,7 +84,10 @@ export async function prepareWithdrawAccounts(
       stakePoolAddress,
     )
 
-    if (!validator.activeStakeLamports.isZero()) {
+    // For active stake accounts, subtract the minimum balance that must remain
+    // to allow for merges and maintain rent exemption
+    const availableActiveLamports = validator.activeStakeLamports.sub(minBalance)
+    if (availableActiveLamports.gt(new BN(0))) {
       const isPreferred = stakePool?.preferredWithdrawValidatorVoteAddress?.equals(
         validator.voteAccountAddress,
       )
@@ -92,7 +95,7 @@ export async function prepareWithdrawAccounts(
         type: isPreferred ? 'preferred' : 'active',
         voteAddress: validator.voteAccountAddress,
         stakeAddress: stakeAccountAddress,
-        lamports: validator.activeStakeLamports,
+        lamports: availableActiveLamports,
       })
     }
 
@@ -137,10 +140,10 @@ export async function prepareWithdrawAccounts(
   }
 
   for (const type of ['preferred', 'active', 'transient', 'reserve']) {
-    const filteredAccounts = accounts.filter(a => a.type == type)
+    const filteredAccounts = accounts.filter(a => a.type === type)
 
     for (const { stakeAddress, voteAddress, lamports } of filteredAccounts) {
-      if (lamports.lte(minBalance) && type == 'transient') {
+      if (lamports.lte(minBalance) && type === 'transient') {
         continue
       }
 
