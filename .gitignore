@@ -26,6 +26,7 @@ dist/
 .anchor/
 
 test-ledger/
+tmp/
 
 # Mac OSX temporary files
 .DS_Store
@@ -35,3 +36,4 @@ test-ledger/
 .env
 .keys
 .claude
+CLAUDE.md

@@ -1,18 +1,19 @@
 {
-  "name": "@ignitionfi/spl-stake-pool",
-  "version": "1.1.26",
-  "description": "Ignition Stake Pool SDK for FOGO",
+  "name": "@ignitionfi/fogo-stake-pool",
+  "version": "1.0.0",
+  "description": "Fogo Stake Pool SDK",
   "contributors": [
     "Anza Maintainers <maintainers@anza.xyz>",
     "Lieu Zheng Hong",
     "mFactory Team (https://mfactory.ch/)",
-    "SolBlaze <contact@solblaze.org> (https://solblaze.org/)"
+    "SolBlaze <contact@solblaze.org> (https://solblaze.org/)",
+    "Ignition Team (https://ignitionfi.xyz/)"
   ],
   "license": "ISC",
-  "homepage": "https://solana.com",
+  "homepage": "https://ignitionfi.xyz",
   "repository": {
     "type": "git",
-    "url": "https://github.com/solana-labs/solana-program-library"
+    "url": "https://github.com/tempest-finance/fogo-stake-pool"
   },
   "keywords": [],
   "publishConfig": {

@@ -20,3 +20,9 @@ check-cfg = [
     'cfg(target_os, values("solana"))',
     'cfg(feature, values("frozen-abi", "no-entrypoint"))',
 ]
+
+[profile.release]
+lto = true
+opt-level = 'z'
+codegen-units = 1
+overflow-checks = true

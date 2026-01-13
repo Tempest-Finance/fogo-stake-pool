@@ -1534,6 +1534,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "fogo-stake-pool-cli"
+version = "2.0.1"
+dependencies = [
+ "bincode",
+ "clap",
+ "serde",
+ "solana-account-decoder",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-cli-output",
+ "solana-client",
+ "solana-logger",
+ "solana-program",
+ "solana-remote-wallet",
+ "solana-sdk",
+ "solana-stake-interface",
+ "solana-system-interface",
+ "spl-associated-token-account",
+ "spl-associated-token-account-client",
+ "spl-stake-pool",
+ "spl-token",
+ "spl-token-2022 8.0.1",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7504,31 +7529,6 @@ dependencies = [
  "spl-token-2022 9.0.0",
  "test-case",
  "thiserror 2.0.12",
-]
-
-[[package]]
-name = "spl-stake-pool-cli"
-version = "2.0.1"
-dependencies = [
- "bincode",
- "clap",
- "serde",
- "solana-account-decoder",
- "solana-clap-utils",
- "solana-cli-config",
- "solana-cli-output",
- "solana-client",
- "solana-logger",
- "solana-program",
- "solana-remote-wallet",
- "solana-sdk",
- "solana-stake-interface",
- "solana-system-interface",
- "spl-associated-token-account",
- "spl-associated-token-account-client",
- "spl-stake-pool",
- "spl-token",
- "spl-token-2022 8.0.1",
 ]
 
 [[package]]

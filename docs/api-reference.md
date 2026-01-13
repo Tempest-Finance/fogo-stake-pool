@@ -1,11 +1,12 @@
 # Ignition Stake Pool API Reference
 
-This document provides a comprehensive API reference for all Ignition Stake Pool components including the FOGO blockchain program instructions, 
+This document provides a comprehensive API reference for all Ignition Stake Pool components including the FOGO blockchain program instructions,
 TypeScript SDK, CLI commands, and Python client.
 
 ## Program Instructions API
 
 ### Program ID
+
 `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
 
 ### Core Data Structures
@@ -13,6 +14,7 @@ TypeScript SDK, CLI commands, and Python client.
 The program uses several key data structures for managing pool state. For complete struct definitions and field-level details, refer to the source code in `program/src/state.rs`.
 
 **Key Structures:**
+
 - **StakePool**: Main pool account (~555 bytes)
 - **ValidatorStakeInfo**: Individual validator information (~88 bytes per validator)
 - **Fee**: Numerator/denominator fee structure
@@ -39,6 +41,7 @@ Initialize {
 ```
 
 **Accounts (10):**
+
 1. `[w]` New StakePool account
 2. `[s]` Manager
 3. `[]` Staker
@@ -51,6 +54,7 @@ Initialize {
 10. `[]` (Optional) Deposit authority
 
 **PDA Seeds:**
+
 - Withdraw Authority: `[stake_pool_address, b"withdraw"]`
 - Deposit Authority: `[stake_pool_address, b"deposit"]`
 
@@ -63,6 +67,7 @@ SetManager
 ```
 
 **Accounts (4):**
+
 1. `[w]` Stake pool
 2. `[s]` Current manager
 3. `[s]` New manager
@@ -89,6 +94,7 @@ pub enum FeeType {
 ```
 
 **Accounts (2):**
+
 1. `[w]` Stake pool
 2. `[s]` Manager
 
@@ -103,6 +109,7 @@ AddValidatorToPool(u32)  // Optional validator seed
 ```
 
 **Accounts (13):**
+
 1. `[w]` Stake pool
 2. `[s]` Staker
 3. `[w]` Reserve stake account
@@ -126,6 +133,7 @@ RemoveValidatorFromPool
 ```
 
 **Accounts (7):**
+
 1. `[w]` Stake pool
 2. `[s]` Staker
 3. `[]` Withdraw authority
@@ -147,6 +155,7 @@ IncreaseValidatorStake {
 ```
 
 **Accounts (14):**
+
 1. `[]` Stake pool
 2. `[s]` Staker
 3. `[]` Withdraw authority
@@ -173,6 +182,7 @@ DepositSol(u64)  // Amount in lamports
 ```
 
 **Accounts (11):**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Reserve stake account
@@ -194,6 +204,7 @@ WithdrawSol(u64)  // Pool tokens to burn
 ```
 
 **Accounts (13):**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[s]` User transfer authority
@@ -219,6 +230,7 @@ DepositWsolWithSession {
 ```
 
 **Accounts (12):**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Reserve stake account
@@ -246,6 +258,7 @@ WithdrawWsolWithSession {
 ```
 
 **Accounts (13):**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[s]` Session authority
@@ -272,6 +285,7 @@ DepositStake
 ```
 
 **Accounts (15):**
+
 1. `[w]` Stake pool
 2. `[w]` Validator list
 3. `[s]/[]` Deposit authority
@@ -297,6 +311,7 @@ WithdrawStake(u64)  // Pool tokens to burn
 ```
 
 **Accounts (13):**
+
 1. `[w]` Stake pool
 2. `[w]` Validator list
 3. `[]` Withdraw authority
@@ -325,6 +340,7 @@ UpdateValidatorListBalance {
 ```
 
 **Accounts (7 + 2N):**
+
 1. `[]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Validator list
@@ -343,6 +359,7 @@ UpdateStakePoolBalance
 ```
 
 **Accounts (7):**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Validator list
@@ -356,7 +373,7 @@ UpdateStakePoolBalance
 ### Installation
 
 ```bash
-npm install @solana/spl-stake-pool @solana/web3.js @solana/spl-token
+npm install @ignitionfi/spl-stake-pool @solana/web3.js @solana/spl-token
 ```
 
 ### Core Functions
@@ -373,16 +390,19 @@ async function getStakePoolAccount(
 Retrieves and deserializes a stake pool account.
 
 **Parameters:**
+
 - `connection`: FOGO RPC connection
 - `stakePoolAddress`: Stake pool public key
 
 **Returns:**
+
 - `StakePoolAccount`: Object containing pubkey and decoded account data
 
 **Example:**
+
 ```typescript
-const pool = await getStakePoolAccount(connection, poolPubkey);
-console.log('Total lamports:', pool.account.data.totalLamports);
+const pool = await getStakePoolAccount(connection, poolPubkey)
+console.log('Total lamports:', pool.account.data.totalLamports)
 ```
 
 #### getStakePoolAccounts
@@ -397,10 +417,12 @@ async function getStakePoolAccounts(
 Retrieves all stake pool and validator list accounts.
 
 **Parameters:**
+
 - `connection`: FOGO RPC connection
 - `stakePoolProgramAddress`: Program ID
 
 **Returns:**
+
 - Array of stake pool and validator list accounts
 
 #### depositSol
@@ -420,6 +442,7 @@ async function depositSol(
 Creates instructions for tokens deposit.
 
 **Parameters:**
+
 - `connection`: FOGO RPC connection
 - `stakePoolAddress`: Stake pool public key
 - `from`: Source tokens account
@@ -429,6 +452,7 @@ Creates instructions for tokens deposit.
 - `depositAuthority`: Required deposit authority (optional)
 
 **Returns:**
+
 - Object with transaction instructions and required signers
 
 #### withdrawSol
@@ -447,6 +471,7 @@ async function withdrawSol(
 Creates instructions for tokens withdrawal.
 
 **Parameters:**
+
 - `connection`: FOGO RPC connection
 - `stakePoolAddress`: Stake pool public key
 - `tokenOwner`: Pool token owner
@@ -455,6 +480,7 @@ Creates instructions for tokens withdrawal.
 - `solWithdrawAuthority`: Required withdraw authority (optional)
 
 **Returns:**
+
 - Object with transaction instructions and required signers
 
 #### depositWsolWithSession
@@ -473,6 +499,7 @@ async function depositWsolWithSession(
 Creates instructions for WSOL deposit using FOGO session tokens (gasless transaction).
 
 **Parameters:**
+
 - `connection`: FOGO RPC connection
 - `stakePoolAddress`: Stake pool public key
 - `sessionAuthority`: Session token authority
@@ -481,6 +508,7 @@ Creates instructions for WSOL deposit using FOGO session tokens (gasless transac
 - `referrerTokenAccount`: Referrer token account (optional)
 
 **Returns:**
+
 - Object with transaction instructions and required signers
 
 **Description:**
@@ -502,6 +530,7 @@ async function withdrawWsolWithSession(
 Creates instructions for WSOL withdrawal using FOGO session tokens (gasless transaction).
 
 **Parameters:**
+
 - `connection`: FOGO RPC connection
 - `stakePoolAddress`: Stake pool public key
 - `sessionAuthority`: Session token authority
@@ -510,10 +539,97 @@ Creates instructions for WSOL withdrawal using FOGO session tokens (gasless tran
 - `amount`: Pool tokens to burn
 
 **Returns:**
+
 - Object with transaction instructions and required signers
 
 **Description:**
 This function enables gasless withdrawals on FOGO blockchain by leveraging session tokens. The session authority validates and processes withdrawals, allowing users to unstake without signing individual transactions.
+
+#### withdrawStakeWithSession
+
+```typescript
+async function withdrawStakeWithSession(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  signerOrSession: PublicKey,
+  userPubkey: PublicKey,
+  payer: PublicKey,
+  amount: number,
+  userStakeSeedStart?: number,
+  useReserve?: boolean,
+  voteAccountAddress?: PublicKey,
+  minimumLamportsOut?: number,
+  validatorComparator?: (a: ValidatorAccount, b: ValidatorAccount) => number
+): Promise<{
+  instructions: TransactionInstruction[]
+  stakeAccountPubkeys: PublicKey[]
+  userStakeSeeds: number[]
+}>
+```
+
+Withdraws stake from the pool using a Fogo session, creating stake account PDAs owned by the user.
+
+**Parameters:**
+
+- `connection`: FOGO RPC connection
+- `stakePoolAddress`: Stake pool public key
+- `signerOrSession`: Session signer public key
+- `userPubkey`: User's wallet (used for PDA derivation and token ownership)
+- `payer`: Payer for stake account rent (typically paymaster)
+- `amount`: Pool tokens to withdraw
+- `userStakeSeedStart`: Starting seed for user stake PDA derivation (default: 0)
+- `useReserve`: Whether to withdraw from reserve (default: false)
+- `voteAccountAddress`: Optional specific validator to withdraw from
+- `minimumLamportsOut`: Minimum lamports to receive (slippage protection)
+- `validatorComparator`: Optional comparator for validator selection
+
+**Returns:**
+
+- Object with transaction instructions, stake account pubkeys, and seeds used
+
+**Description:**
+This function enables gasless stake withdrawals on FOGO blockchain. The stake accounts are created as PDAs derived from `[b"user_stake", user_wallet, seed]`, allowing users to withdraw stake without signing transactions.
+
+#### findNextUserStakeSeed
+
+```typescript
+async function findNextUserStakeSeed(
+  connection: Connection,
+  programId: PublicKey,
+  userPubkey: PublicKey,
+  startSeed?: number,
+  maxSeed?: number
+): Promise<number>
+```
+
+Finds the next available seed for creating a user stake PDA.
+
+#### getUserStakeAccounts
+
+```typescript
+async function getUserStakeAccounts(
+  connection: Connection,
+  programId: PublicKey,
+  userPubkey: PublicKey,
+  maxSeed?: number
+): Promise<UserStakeAccount[]>
+```
+
+Fetches all user stake accounts created via `WithdrawStakeWithSession`.
+
+**Returns:**
+
+```typescript
+interface UserStakeAccount {
+  pubkey: PublicKey
+  seed: number
+  lamports: number
+  state: 'inactive' | 'activating' | 'active' | 'deactivating'
+  voter?: PublicKey
+  activationEpoch?: number
+  deactivationEpoch?: number
+}
+```
 
 #### depositStake
 
@@ -544,9 +660,9 @@ async function withdrawStake(
   poolTokenAccount?: PublicKey,
   validatorComparator?: (a: ValidatorAccount, b: ValidatorAccount) => number
 ): Promise<{
-  instructions: TransactionInstruction[],
-  signers: Signer[],
-  stakeReceiver: PublicKey,
+  instructions: TransactionInstruction[]
+  signers: Signer[]
+  stakeReceiver: PublicKey
   totalRentFreeBalances: number
 }>
 ```
@@ -615,33 +731,34 @@ async function stakePoolInfo(
 Retrieves comprehensive stake pool information.
 
 **Returns:**
+
 ```typescript
 interface StakePoolInfo {
-  address: string;
-  poolWithdrawAuthority: string;
-  manager: string;
-  staker: string;
-  stakeDepositAuthority: string;
-  maxValidators: number;
-  validatorList: ValidatorInfo[];
-  poolMint: string;
-  totalLamports: string;
-  poolTokenSupply: string;
-  lastUpdateEpoch: string;
+  address: string
+  poolWithdrawAuthority: string
+  manager: string
+  staker: string
+  stakeDepositAuthority: string
+  maxValidators: number
+  validatorList: ValidatorInfo[]
+  poolMint: string
+  totalLamports: string
+  poolTokenSupply: string
+  lastUpdateEpoch: string
   fees: {
-    epochFee: Fee;
-    stakeDepositFee: Fee;
-    stakeWithdrawalFee: Fee;
-    solDepositFee: Fee;
-    solWithdrawalFee: Fee;
-  };
+    epochFee: Fee
+    stakeDepositFee: Fee
+    stakeWithdrawalFee: Fee
+    solDepositFee: Fee
+    solWithdrawalFee: Fee
+  }
   details: {
-    reserveStakeLamports: number;
-    stakeAccounts: StakeAccountInfo[];
-    totalPoolTokens: number;
-    currentNumberOfValidators: number;
-    updateRequired: boolean;
-  };
+    reserveStakeLamports: number
+    stakeAccounts: StakeAccountInfo[]
+    totalPoolTokens: number
+    currentNumberOfValidators: number
+    updateRequired: boolean
+  }
 }
 ```
 
@@ -653,7 +770,7 @@ async function updateStakePool(
   stakePool: StakePoolAccount,
   noMerge?: boolean
 ): Promise<{
-  updateListInstructions: TransactionInstruction[],
+  updateListInstructions: TransactionInstruction[]
   finalInstructions: TransactionInstruction[]
 }>
 ```
@@ -686,12 +803,12 @@ Calculate tokens amount for given pool tokens.
 
 ```typescript
 // Program IDs
-export const STAKE_POOL_PROGRAM_ID: PublicKey;
-export const DEVNET_STAKE_POOL_PROGRAM_ID: PublicKey;
+export const STAKE_POOL_PROGRAM_ID: PublicKey
+export const DEVNET_STAKE_POOL_PROGRAM_ID: PublicKey
 
 // Limits
-export const MAX_VALIDATORS_TO_UPDATE = 4;
-export const MINIMUM_ACTIVE_STAKE = 1_000_000;
+export const MAX_VALIDATORS_TO_UPDATE = 4
+export const MINIMUM_ACTIVE_STAKE = 1_000_000
 ```
 
 ## CLI Commands Reference
@@ -867,13 +984,13 @@ pub enum StakePoolError {
 
 ### Common Error Solutions
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `StakeListOutOfDate` | Validator list needs update | Run `update-validator-list-balance` |
-| `ValidatorAlreadyAdded` | Validator already in pool | Check validator list before adding |
-| `FeeTooHigh` | Fee numerator >= denominator | Set reasonable fee values |
-| `WithdrawTooLarge` | Insufficient pool balance | Check available withdrawal amount |
-| `CalculationFailure` | Math overflow | Use reasonable amounts |
+| Error                   | Cause                        | Solution                            |
+| ----------------------- | ---------------------------- | ----------------------------------- |
+| `StakeListOutOfDate`    | Validator list needs update  | Run `update-validator-list-balance` |
+| `ValidatorAlreadyAdded` | Validator already in pool    | Check validator list before adding  |
+| `FeeTooHigh`            | Fee numerator >= denominator | Set reasonable fee values           |
+| `WithdrawTooLarge`      | Insufficient pool balance    | Check available withdrawal amount   |
+| `CalculationFailure`    | Math overflow                | Use reasonable amounts              |
 
 ### Batch Operations
 
@@ -896,7 +1013,7 @@ spl-stake-pool update POOL_ADDRESS
 const connection = new Connection(rpcUrl, {
   commitment: 'confirmed',
   disableRetryOnRateLimit: false,
-});
+})
 
 // Use connection pooling for high-volume applications
 ```
@@ -918,6 +1035,7 @@ const connection = new Connection(rpcUrl, {
 ### Breaking Changes
 
 Breaking changes are announced with:
+
 1. Deprecation warnings (minimum 1 release)
 2. Migration guides
 3. Updated documentation
@@ -925,16 +1043,19 @@ Breaking changes are announced with:
 ## Support and Resources
 
 ### Documentation
+
 - [Program Guide](./program-guide.md) - Detailed program documentation
 - [API Reference](./api-reference.md#typescript-sdk) - TypeScript SDK examples
 - [CLI Reference](./cli-reference.md) - Complete CLI documentation
 
 ### Community
+
 - **GitHub**: Issues and discussions
 - **FOGO Discord**: `#developers` channel
 - **Stack Overflow**: Tag questions with `fogo` and `spl-stake-pool`
 
 ### Security
+
 - Report security issues privately to maintainers
 - Security audit reports available in repository
 - Bug bounty program (if applicable)

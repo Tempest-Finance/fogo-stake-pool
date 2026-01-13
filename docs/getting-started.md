@@ -12,7 +12,7 @@ Before you begin, ensure you have the following installed:
 - **Rust**: Version `1.86.0` or later
 - **Solana CLI**: Version `2.3.4` or later
 - **Node.js**: Version `22.x` or later
-- **pnpm**: Version `10.20.0` or later
+- **pnpm**: Version `10.28.0` or later
 - **Git**: For cloning the repository
 
 ### Installing Tools
@@ -31,7 +31,7 @@ nvm install 22
 nvm use 22
 
 # Install pnpm
-npm install -g pnpm@10.20.0
+npm install -g pnpm@10.28.0
 
 # Verify installations
 rustc --version
@@ -322,6 +322,63 @@ async function withdrawWithSession(
 
   console.log('Signature:', result.signature);
   return result;
+}
+```
+
+#### Withdraw Stake with Session
+
+```typescript
+import {
+  withdrawStakeWithSession,
+  findNextUserStakeSeed,
+  getUserStakeAccounts
+} from '@ignitionfi/spl-stake-pool';
+
+async function withdrawStakeWithSessionExample(
+  connection,
+  stakePoolAddress,
+  sessionState,
+  poolTokenAmount
+) {
+  // Find the next available user stake seed
+  const nextSeed = await findNextUserStakeSeed(
+    connection,
+    STAKE_POOL_PROGRAM_ID,
+    sessionState.walletPublicKey
+  );
+
+  // Create withdraw stake instructions using session
+  const { instructions, stakeAccountPubkeys, userStakeSeeds } = await withdrawStakeWithSession(
+    connection,
+    stakePoolAddress,
+    sessionState.sessionPublicKey, // Session signer
+    sessionState.walletPublicKey, // User's wallet
+    sessionState.payer, // Payer for stake account rent
+    poolTokenAmount,
+    nextSeed // Starting seed for user stake PDAs
+  );
+
+  // Send using session
+  const result = await sessionState.sendTransaction(instructions);
+
+  console.log('Stake accounts created:', stakeAccountPubkeys.map(p => p.toBase58()));
+  console.log('Seeds used:', userStakeSeeds);
+  return result;
+}
+
+// Fetch user's stake accounts after withdrawal
+async function getUserStakes(connection, userPubkey) {
+  const stakes = await getUserStakeAccounts(
+    connection,
+    STAKE_POOL_PROGRAM_ID,
+    userPubkey
+  );
+
+  stakes.forEach(stake => {
+    console.log(`Stake ${stake.seed}: ${stake.lamports} lamports, state: ${stake.state}`);
+  });
+
+  return stakes;
 }
 ```
 

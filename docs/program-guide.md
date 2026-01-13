@@ -13,6 +13,7 @@ The Ignition Stake Pool program is a FOGO blockchain program that enables the cr
 ### Stake Pool Mechanics
 
 A stake pool consists of:
+
 - **Pool Account**: The main account containing pool configuration and state
 - **Validator List**: A list of validators and their associated stake accounts
 - **Reserve Account**: Holds deactivated stake for immediate withdrawals
@@ -26,6 +27,7 @@ Pool Token Value = Total Pool Lamports / Pool Token Supply
 ```
 
 When users deposit stake:
+
 1. Their stake is added to the pool's total lamports
 2. Pool tokens are minted proportionally to their contribution
 3. Fees are deducted and distributed to managers and referrers
@@ -59,6 +61,9 @@ The program uses several PDA patterns for secure authority management:
 
 // Ephemeral stake accounts (very temporary during complex operations)
 [stake_pool_address, b"ephemeral", seed] → ephemeral_stake
+
+// User stake accounts (created during WithdrawStakeWithSession)
+[b"user_stake", user_wallet, seed] → user_stake_account
 ```
 
 ### Usage Example
@@ -113,6 +118,7 @@ Initialize {
 ```
 
 **Accounts:**
+
 1. `[w]` New StakePool account
 2. `[s]` Manager
 3. `[]` Staker
@@ -133,6 +139,7 @@ SetManager
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Current manager
 3. `[s]` New manager
@@ -159,6 +166,7 @@ pub enum FeeType {
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Manager
 
@@ -171,6 +179,7 @@ SetStaker
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Manager or current staker
 3. `[]` New staker
@@ -190,6 +199,7 @@ pub enum FundingType {
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Manager
 3. `[]` New authority (or None)
@@ -205,6 +215,7 @@ AddValidatorToPool(u32)  // Optional seed for validator stake account
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Staker
 3. `[w]` Reserve stake account
@@ -228,6 +239,7 @@ RemoveValidatorFromPool
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Staker
 3. `[]` Withdraw authority
@@ -254,6 +266,7 @@ pub enum PreferredValidatorType {
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[s]` Staker
 3. `[]` Validator list
@@ -272,6 +285,7 @@ IncreaseValidatorStake {
 ```
 
 **Accounts:**
+
 1. `[]` Stake pool
 2. `[s]` Staker
 3. `[]` Withdraw authority
@@ -336,6 +350,7 @@ UpdateValidatorListBalance {
 ```
 
 **Accounts:**
+
 1. `[]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Validator list
@@ -343,7 +358,7 @@ UpdateValidatorListBalance {
 5. `[]` Clock sysvar
 6. `[]` Stake history sysvar
 7. `[]` Stake program
-8. `..` Validator and transient stake account pairs (up to MAX_VALIDATORS_TO_UPDATE * 2)
+8. `..` Validator and transient stake account pairs (up to MAX_VALIDATORS_TO_UPDATE \* 2)
 
 #### UpdateStakePoolBalance
 
@@ -354,6 +369,7 @@ UpdateStakePoolBalance
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Validator list
@@ -371,6 +387,7 @@ CleanupRemovedValidatorEntries
 ```
 
 **Accounts:**
+
 1. `[]` Stake pool
 2. `[w]` Validator list
 
@@ -385,6 +402,7 @@ DepositStake
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[w]` Validator list
 3. `[s]/[]` Deposit authority (if required)
@@ -410,6 +428,7 @@ WithdrawStake(u64)  // Amount of pool tokens to burn
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[w]` Validator list
 3. `[]` Withdraw authority
@@ -433,6 +452,7 @@ DepositSol(u64)  // Amount of tokens to deposit
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Reserve stake account
@@ -454,6 +474,7 @@ WithdrawSol(u64)  // Amount of tokens to withdraw
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[s]` User transfer authority
@@ -479,6 +500,7 @@ DepositWsolWithSession {
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[w]` Reserve stake account
@@ -506,6 +528,7 @@ WithdrawWsolWithSession {
 ```
 
 **Accounts:**
+
 1. `[w]` Stake pool
 2. `[]` Withdraw authority
 3. `[s]` Session authority
@@ -522,6 +545,63 @@ WithdrawWsolWithSession {
 
 **Description:**
 This instruction enables gasless withdrawals on FOGO blockchain by using session tokens. The session authority validates and processes the withdrawal, providing a seamless user experience for withdrawing stake pool tokens back to WSOL.
+
+#### WithdrawStakeWithSession
+
+Withdraws stake from the pool using a session token, creating a user-owned stake account PDA (FOGO blockchain specific).
+
+```rust
+WithdrawStakeWithSession {
+    pool_tokens_in: u64,       // Amount of pool tokens to burn
+    minimum_lamports_out: u64, // Minimum lamports to receive (slippage protection)
+    user_stake_seed: u64,      // Seed for user stake PDA derivation
+}
+```
+
+**Accounts:**
+
+1. `[w]` Stake pool
+2. `[w]` Validator list
+3. `[]` Withdraw authority
+4. `[w]` Validator/reserve stake account to split from
+5. `[w]` User stake account PDA (destination)
+6. `[s]` Session signer (user_stake_authority)
+7. `[]` User transfer authority (same as session signer in session path)
+8. `[w]` User pool token account
+9. `[w]` Manager fee account
+10. `[w]` Pool token mint
+11. `[]` Clock sysvar
+12. `[]` Token program
+13. `[]` Stake program
+14. `[]` Program signer PDA
+15. `[]` System program
+16. `[s,w]` Payer (for stake account rent)
+
+**Description:**
+This instruction enables gasless stake withdrawals on FOGO blockchain. The user stake account is created as a PDA derived from `[b"user_stake", user_wallet, seed]`, giving the user authority over the stake account. The payer (typically a paymaster) covers the rent for the new stake account.
+
+#### WithdrawFromStakeAccountWithSession
+
+Withdraws SOL from a deactivated user stake account using a session token (FOGO blockchain specific).
+
+```rust
+WithdrawFromStakeAccountWithSession {
+    lamports: u64,        // Amount to withdraw (MAX for full withdrawal)
+    user_stake_seed: u64, // Seed used to derive the user stake PDA
+}
+```
+
+**Accounts:**
+
+1. `[w]` User stake account PDA
+2. `[w]` User wallet (destination)
+3. `[]` Clock sysvar
+4. `[]` Stake history sysvar
+5. `[s]` Session signer
+6. `[]` Stake program
+
+**Description:**
+After a stake account has been deactivated and the deactivation epoch has passed, this instruction allows the user to withdraw the SOL back to their wallet using a session token. The stake account must be fully deactivated (inactive state).
 
 ### Token Metadata Instructions
 
@@ -646,19 +726,22 @@ pub enum StakePoolError {
 ## Security Considerations
 
 ### Authority Management
+
 - Pool authorities should use multisig or hardware wallets
 - Separate hot/cold wallet strategies for different operations
 - Regular authority rotation following security best practices
 
 ### Fee Protection
+
 - Withdrawal fees can only increase by 3/2 ratio per epoch
 - Monitor fee changes and validator additions/removals
 - Understand referral fee implications
 
 ### Validator Risk
+
 - Pool performance depends on validator selection
 - Diversify across multiple high-performing validators
 - Monitor validator health and commission rates
 
-This comprehensive guide covers all aspects of the Ignition Stake Pool program. 
+This comprehensive guide covers all aspects of the Ignition Stake Pool program.
 For implementation examples and integration patterns, see the [API Reference](./api-reference.md#typescript-sdk-api) and [API Reference](./api-reference.md).

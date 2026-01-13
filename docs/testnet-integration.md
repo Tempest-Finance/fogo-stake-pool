@@ -2,20 +2,20 @@
 
 ## Addresses
 
-| Component              | Address                                        |
-| ---------------------- | ---------------------------------------------- |
-| **Program ID**         | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`  |
-| **Stake Pool**         | `PooLqqJBxaeCe7UXdsFZ7G5DqtNLCoAqj25sKGKWoCV`  |
-| **Pool Token Mint**    | `5VM3GV1V5G64ozKZLDEfpJCAPGrAMPzBzYENMsF2tmHU` |
-| **Reserve Stake**      | `C2ogdtPNHbovAsPL2R5f8F5pRpw8bZYf8negTjSgXzPH` |
-| **Withdraw Authority** | `6PzP8dmEp8FxKV6TKhgPy9xoWymGoG8HUx2bgA2qwojt` |
+| Component              | Address                                       |
+| ---------------------- | --------------------------------------------- |
+| **Program ID**         | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
+| **Stake Pool**         | `ign1zuR3YsvLVsEu8WzsyazBA8EVWUxPPHKnhqhoSTB` |
+| **Pool Token Mint**    | `iFoGoY5nMWpuMJogR7xjUAWDJtygHDF17zREeP4MKuD` |
+| **Reserve Stake**      | _Derived at pool creation_                    |
+| **Withdraw Authority** | _Derived from pool address_                   |
 
 ## Fees
 
 ```
 Epoch Fee: 7/100 of epoch rewards
-Stake Withdrawal Fee: 7/100 of withdrawal amount
-SOL Withdrawal Fee: 7/100 of withdrawal amount
+Stake Withdrawal Fee: 243/64000 of withdrawal amount
+SOL Withdrawal Fee: 81/16000 of withdrawal amount
 Stake Deposit Fee: 0/0 of deposit amount
 SOL Deposit Fee: 0/0 of deposit amount
 ```
@@ -25,7 +25,7 @@ SOL Deposit Fee: 0/0 of deposit amount
 See [Getting Started](./getting-started.md#using-the-typescript-sdk) for full documentation.
 
 ```bash
-npm install @ignitionfi/spl-stake-pool
+npm install @ignitionfi/fogo-stake-pool
 ```
 
 ### Example: Pool Info & Exchange Rate
@@ -35,7 +35,7 @@ import { getStakePoolAccount } from '@ignitionfi/spl-stake-pool'
 import { Connection, PublicKey } from '@solana/web3.js'
 
 const connection = new Connection('https://testnet.fogo.io')
-const stakePool = new PublicKey('PooLqqJBxaeCe7UXdsFZ7G5DqtNLCoAqj25sKGKWoCV')
+const stakePool = new PublicKey('ign1zuR3YsvLVsEu8WzsyazBA8EVWUxPPHKnhqhoSTB')
 
 const poolInfo = await getStakePoolAccount(connection, stakePool)
 const { totalLamports, poolTokenSupply, poolMint } = poolInfo.account.data
