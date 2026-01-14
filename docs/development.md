@@ -45,8 +45,8 @@ pnpm --version
 
 ```bash
 # Clone the repository
-git clone https://github.com/tempest-finance/spl-stake-pool.git
-cd tempest-finance/spl-stake-pool
+git clone https://github.com/Tempest-Finance/fogo-stake-pool.git
+cd Tempest-Finance/fogo-stake-pool
 
 # Install dependencies
 pnpm install
@@ -195,29 +195,29 @@ The CLI is located in `clients/cli/`:
 # Build CLI
 make build/cli
 # OR
-cargo build --bin spl-stake-pool --release
+cargo build --bin fogo-stake-pool --release
 
 # Test CLI
 pnpm clients:cli:test
 # OR
-cargo test -p spl-stake-pool-cli
+cargo test -p fogo-stake-pool-cli
 
 # Run CLI locally
-./spl-stake-pool --help
+./fogo-stake-pool --help
 
 # Debug mode
-cargo run --bin spl-stake-pool -- --help
+cargo run --bin fogo-stake-pool -- --help
 ```
 
 #### CLI Testing
 
 ```bash
 # Unit tests
-cargo test -p spl-stake-pool-cli
+cargo test -p fogo-stake-pool-cli
 
 # Integration tests with local validator
 ./scripts/client/setup-test-validator.sh
-./spl-stake-pool create-pool --help
+./fogo-stake-pool create-pool --help
 ```
 
 ### 3. TypeScript SDK Development
@@ -302,7 +302,7 @@ make test
 
 # Run tests for specific components
 cargo test -p spl-stake-pool          # Program tests
-cargo test -p spl-stake-pool-cli      # CLI tests
+cargo test -p fogo-stake-pool-cli      # CLI tests
 pnpm sdk test                         # SDK tests
 pnpm clients:py:test                  # Python tests
 ```

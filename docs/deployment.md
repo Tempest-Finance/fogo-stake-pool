@@ -4,10 +4,9 @@ This guide provides comprehensive instructions for deploying Fogo Stake Pool pro
 
 ## Overview
 
-The Fogo Stake Pool project supports deployment to multiple environments:
+The Fogo Stake Pool project supports deployment to:
 
-- **Local Development**: Local FOGO validator for testing
-- **Testnet**: FOGO's testing network (via Fogo infrastructure)
+- **Testnet**: FOGO's testing network
 - **Mainnet**: FOGO's production network
 
 ## Prerequisites
@@ -15,7 +14,7 @@ The Fogo Stake Pool project supports deployment to multiple environments:
 ### Required Tools
 
 ```bash
-# Solana CLI
+# FOGO CLI (Solana-compatible)
 solana --version
 
 # Rust toolchain
@@ -28,12 +27,12 @@ ls target/deploy/spl_stake_pool.so
 ### Network Configuration
 
 ```bash
-# Check current Solana CLI configuration
+# Check current CLI configuration
 solana config get
 
-# Configure for specific network (examples)
+# Configure for specific network
 solana config set --url https://testnet.fogo.io     # Testnet
-solana config set --url http://localhost:8899       # Local
+solana config set --url https://mainnet.fogo.io     # Mainnet
 ```
 
 ## Program Deployment
@@ -79,81 +78,21 @@ ls -lh target/deploy/spl_stake_pool.so
 du -h target/deploy/spl_stake_pool.so
 ```
 
-## Local Deployment
+## Testnet Deployment
 
-### Setting Up Local Validator
-
-```bash
-# Start local validator with necessary features
-solana-test-validator \
-    --ledger .ledger \
-    --bind-address 0.0.0.0 \
-    --rpc-port 8899 \
-    --faucet-port 9900 \
-    --reset
-
-# In another terminal, configure for local development
-solana config set --url http://localhost:8899
-solana config set --keypair ~/.config/fogo/id.json
-
-# Verify connection
-solana cluster-version
-solana balance
-```
-
-### Deploy to Local Network
+### Configure for Testnet
 
 ```bash
-# Method 1: Using Makefile (recommended)
-make deploy/localnet
-
-# Method 2: Direct deployment
-make build
-solana program deploy \
-    --url http://localhost:8899 \
-    --program-id .keys/SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr.json \
-    target/deploy/spl_stake_pool.so
-
-# Verify deployment
-solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url http://localhost:8899
-```
-
-### Local Testing
-
-```bash
-# Airdrop tokens for testing
-solana airdrop 10
-
-# Create test stake pool using CLI
-./spl-stake-pool create-pool \
-    --epoch-fee-numerator 3 \
-    --epoch-fee-denominator 100 \
-    --withdrawal-fee-numerator 5 \
-    --withdrawal-fee-denominator 1000 \
-    --deposit-fee-numerator 0 \
-    --deposit-fee-denominator 1 \
-    --referral-fee 10 \
-    --max-validators 100
-
-# Test basic operations
-./spl-stake-pool list-all
-```
-
-## Devnet Deployment
-
-### Configure for Devnet
-
-```bash
-# Set Solana CLI to devnet
-solana config set --url https://api.devnet.fogo.io
-solana config set --keypair ~/.config/fogo/devnet-deployer.json
+# Set CLI to FOGO testnet
+solana config set --url https://testnet.fogo.io
+solana config set --keypair ~/.config/fogo/testnet-deployer.json
 
 # Verify connection
 solana cluster-version
 solana epoch-info
 ```
 
-### Get Devnet tokens
+### Get Testnet Tokens
 
 ```bash
 # Airdrop tokens for deployment costs
@@ -163,29 +102,29 @@ solana airdrop 5
 solana balance
 ```
 
-### Deploy to Devnet
+### Deploy to Testnet
 
 ```bash
-# Method 1: Using Makefile
-make deploy/testnet
+# Method 1: Using Makefile (recommended)
+make deploy CLUSTER=testnet
 
 # Method 2: Manual deployment
 make build
 solana program deploy \
-    --url https://api.devnet.fogo.io \
+    --url https://testnet.fogo.io \
     --program-id .keys/SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr.json \
     target/deploy/spl_stake_pool.so
 
 # Verify deployment
-solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://api.devnet.fogo.io
+solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://testnet.fogo.io
 ```
 
-### Devnet Testing
+### Testnet Testing
 
 ```bash
-# Create stake pool on devnet
-./spl-stake-pool create-pool \
-    --url https://api.devnet.fogo.io \
+# Create stake pool on testnet
+./fogo-stake-pool create-pool \
+    --url https://testnet.fogo.io \
     --epoch-fee-numerator 3 \
     --epoch-fee-denominator 100 \
     --withdrawal-fee-numerator 5 \
@@ -195,42 +134,8 @@ solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://ap
     --referral-fee 10 \
     --max-validators 50
 
-# List all pools on devnet
-./spl-stake-pool list-all --url https://api.devnet.fogo.io
-```
-
-## Testnet Deployment (Fogo)
-
-### Configure for Fogo Testnet
-
-```bash
-# Set Solana CLI to Fogo testnet
-solana config set --url https://testnet.fogo.io
-solana config set --keypair ~/.config/fogo/fogo-testnet.json
-
-# Verify connection
-solana cluster-version
-```
-
-### Get Testnet tokens
-
-```bash
-# Request tokens from Fogo faucet
-# Visit faucet website or use CLI if available
-solana airdrop 10 --url https://testnet.fogo.io
-
-# Verify balance
-solana balance --url https://testnet.fogo.io
-```
-
-### Deploy to Testnet
-
-```bash
-# Deploy using Makefile
-make deploy/testnet
-
-# Verify deployment
-solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://testnet.fogo.io
+# List all pools on testnet
+./fogo-stake-pool list-all --url https://testnet.fogo.io
 ```
 
 ## Mainnet Deployment
@@ -239,7 +144,7 @@ solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://te
 
 Before deploying to mainnet, ensure:
 
-- [ ] Code has been thoroughly tested on devnet/testnet
+- [ ] Code has been thoroughly tested on testnet
 - [ ] Security audit completed (if applicable)
 - [ ] All tests pass (`make test`)
 - [ ] Code formatted and linted (`make fmt lint`)
@@ -250,8 +155,8 @@ Before deploying to mainnet, ensure:
 ### Configure for Mainnet
 
 ```bash
-# Set Solana CLI to mainnet
-solana config set --url https://api.mainnet.fogo.io
+# Set CLI to FOGO mainnet
+solana config set --url https://mainnet.fogo.io
 solana config set --keypair ~/.config/fogo/mainnet-deployer.json
 
 # Verify configuration
@@ -266,7 +171,7 @@ solana balance
 
 ```bash
 # Deploy to mainnet (with confirmation prompt)
-make deploy/mainnet
+make deploy CLUSTER=mainnet
 
 # This will:
 # 1. Build the program
@@ -277,17 +182,16 @@ make deploy/mainnet
 
 # Alternative: Manual deployment with extra verification
 make build
-make verify-build
 
 # Final deployment command
 solana program deploy \
-    --url https://api.mainnet.fogo.io \
+    --url https://mainnet.fogo.io \
     --program-id .keys/SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr.json \
     target/deploy/spl_stake_pool.so \
     --with-compute-unit-price 1000
 
 # Verify successful deployment
-solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://api.mainnet.fogo.io
+solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://mainnet.fogo.io
 ```
 
 ### Post-Deployment Verification
@@ -297,7 +201,7 @@ solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --url https://ap
 solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
 
 # Test basic functionality (if safe)
-./spl-stake-pool list-all
+./fogo-stake-pool list-all
 
 # Monitor program usage
 solana logs SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
@@ -314,9 +218,7 @@ make build
 # Upgrade existing program
 make upgrade CLUSTER=mainnet
 # OR
-make upgrade CLUSTER=devnet
-# OR
-make upgrade CLUSTER=localnet
+make upgrade CLUSTER=testnet
 
 # Verify upgrade
 solana program show SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
@@ -355,32 +257,6 @@ pnpm test
 pnpm publish
 ```
 
-### Web Application
-
-
-```bash
-pnpm build
-
-# Deploy to static hosting
-# The 'out' directory contains the built site
-
-# Example deployment platforms:
-# - Vercel: vercel --prod
-# - Netlify: netlify deploy --prod --dir out
-# - AWS S3: aws s3 sync out/ s3://your-bucket/
-# - GitHub Pages: Push 'out' contents to gh-pages branch
-```
-
-#### Environment Configuration
-
-Create production environment files:
-
-```bash
-NEXT_PUBLIC_RPC_ENDPOINT=https://api.mainnet.fogo.io
-NEXT_PUBLIC_STAKE_POOL_ADDRESS=SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
-NEXT_PUBLIC_SESSIONS_PROGRAM_ID=Your_Sessions_Program_ID
-```
-
 ### CLI Tool Distribution
 
 ```bash
@@ -388,7 +264,7 @@ NEXT_PUBLIC_SESSIONS_PROGRAM_ID=Your_Sessions_Program_ID
 make build/cli
 
 # Create distribution package
-tar -czf spl-stake-pool-cli.tar.gz -C target/release spl-stake-pool
+tar -czf fogo-stake-pool-cli.tar.gz -C target/release fogo-stake-pool
 
 # Or create platform-specific builds
 cargo build --release --target x86_64-unknown-linux-gnu
@@ -428,7 +304,7 @@ else
 fi
 
 # Check if any stake pools exist
-POOLS=$(./spl-stake-pool list-all --url $RPC_URL --output json 2>/dev/null)
+POOLS=$(./fogo-stake-pool list-all --url $RPC_URL --output json 2>/dev/null)
 if [ $? -eq 0 ] && [ "$(echo $POOLS | jq length)" -gt 0 ]; then
     echo "✅ Stake pools are operational"
 else
@@ -446,7 +322,7 @@ fi
 # Error: insufficient funds for deployment
 solana balance
 # Solution: Add more tokens
-solana airdrop 5  # For devnet/testnet
+solana airdrop 5  # For testnet
 # For mainnet: transfer tokens from another account
 ```
 
@@ -455,7 +331,7 @@ solana airdrop 5  # For devnet/testnet
 ```bash
 # Error: program account already exists
 # Solution: Use upgrade instead of deploy
-make upgrade CLUSTER=devnet
+make upgrade CLUSTER=testnet
 ```
 
 #### Invalid Program Keypair
@@ -473,10 +349,9 @@ solana-keygen pubkey .keys/SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr.json
 # Check network connectivity
 solana cluster-version --url <RPC_URL>
 
-# Try different RPC endpoints
-# Mainnet alternatives:
-# - https://testnet.fogo.io
-# - https://mainnet.fogo.io
+# FOGO RPC endpoints:
+# - https://testnet.fogo.io (Testnet)
+# - https://mainnet.fogo.io (Mainnet)
 ```
 
 #### Program Size Limits
@@ -511,7 +386,7 @@ solana program deploy \
 
 1. **Keypair Security**: Store program keypairs securely
 2. **Multi-signature**: Use multi-sig for upgrade authority on mainnet
-3. **Gradual Rollout**: Test thoroughly on devnet before mainnet
+3. **Gradual Rollout**: Test thoroughly on testnet before mainnet
 4. **Monitoring**: Set up alerts for program activity
 5. **Backup Plans**: Have rollback procedures ready
 
@@ -529,4 +404,5 @@ solana program set-upgrade-authority \
     --final
 ```
 
-This deployment guide covers all aspects of deploying Fogo Stake Pool across different networks. For development setup, see the [Development Guide](./development.md).
+This deployment guide covers all aspects of deploying Fogo Stake Pool across different networks.
+For development setup, see the [Development Guide](./development.md).

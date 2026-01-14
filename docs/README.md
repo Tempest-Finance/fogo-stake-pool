@@ -58,12 +58,12 @@ Python client library for stake pool operations, useful for data analysis and ba
 
 ## Quick Navigation
 
-| Component      | Documentation                                      | Source Code                         |
-| -------------- | -------------------------------------------------- | ----------------------------------- |
-| Stake Pool Program | [Program Guide](./program-guide.md)            | [`program/`](../program/)           |
-| CLI Tool       | [CLI Reference](./cli-reference.md)                | [`clients/cli/`](../clients/cli/)   |
-| TypeScript SDK | [API Reference](./api-reference.md#typescript-sdk) | [`clients/js/`](../clients/js/) |
-| Python Client  | [API Reference](./api-reference.md#python-client)  | [`clients/py/`](../clients/py/)     |
+| Component          | Documentation                                      | Source Code                       |
+| ------------------ | -------------------------------------------------- | --------------------------------- |
+| Stake Pool Program | [Program Guide](./program-guide.md)                | [`program/`](../program/)         |
+| CLI Tool           | [CLI Reference](./cli-reference.md)                | [`clients/cli/`](../clients/cli/) |
+| TypeScript SDK     | [API Reference](./api-reference.md#typescript-sdk) | [`clients/js/`](../clients/js/)   |
+| Python Client      | [API Reference](./api-reference.md#python-client)  | [`clients/py/`](../clients/py/)   |
 
 ## Key Concepts
 

@@ -12,9 +12,9 @@ git clone https://github.com/fogo-labs/fogo-program-library.git
 cd solana-program-library/stake-pool
 
 # Build the CLI
-cargo build --bin spl-stake-pool --release
+cargo build --bin fogo-stake-pool --release
 
-# The binary will be available at ./spl-stake-pool
+# The binary will be available at ./fogo-stake-pool
 ```
 
 ### Using Make (if available)
@@ -27,10 +27,10 @@ make build/cli
 
 ```bash
 # Copy to system bin directory
-sudo cp ./spl-stake-pool /usr/local/bin/
+sudo cp ./fogo-stake-pool /usr/local/bin/
 
 # Or create a symlink
-ln -sf $(pwd)/target/release/spl-stake-pool /usr/local/bin/spl-stake-pool
+ln -sf $(pwd)/target/release/fogo-stake-pool /usr/local/bin/fogo-stake-pool
 ```
 
 ## Global Options
@@ -91,7 +91,7 @@ Creates a new stake pool with the specified configuration.
 
 **Usage:**
 ```bash
-spl-stake-pool create-pool [OPTIONS] <ARGUMENTS>
+fogo-stake-pool create-pool [OPTIONS] <ARGUMENTS>
 ```
 
 **Required Arguments:**
@@ -122,7 +122,7 @@ spl-stake-pool create-pool [OPTIONS] <ARGUMENTS>
 
 **Example:**
 ```bash
-spl-stake-pool create-pool \
+fogo-stake-pool create-pool \
   --epoch-fee-numerator 3 \
   --epoch-fee-denominator 100 \
   --withdrawal-fee-numerator 5 \
@@ -143,14 +143,14 @@ Changes the pool manager. Must be signed by the current manager.
 
 **Usage:**
 ```bash
-spl-stake-pool set-manager <POOL_ADDRESS> \
+fogo-stake-pool set-manager <POOL_ADDRESS> \
   --new-manager <PUBKEY> \
   --new-fee-receiver <PUBKEY>
 ```
 
 **Example:**
 ```bash
-spl-stake-pool set-manager So11111111111111111111111111111111111111112 \
+fogo-stake-pool set-manager So11111111111111111111111111111111111111112 \
   --new-manager 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM \
   --new-fee-receiver HLmqeL62xR1QoZ1HKKbXRrdN1p3phKpxRMb2VVopvBBz
 ```
@@ -161,7 +161,7 @@ Changes the pool staker. Must be signed by manager or current staker.
 
 **Usage:**
 ```bash
-spl-stake-pool set-staker <POOL_ADDRESS> \
+fogo-stake-pool set-staker <POOL_ADDRESS> \
   --new-staker <PUBKEY>
 ```
 
@@ -171,7 +171,7 @@ Updates pool fees. Must be signed by the manager.
 
 **Usage:**
 ```bash
-spl-stake-pool set-fee <POOL_ADDRESS> <FEE_TYPE> \
+fogo-stake-pool set-fee <POOL_ADDRESS> <FEE_TYPE> \
   --fee-numerator <NUM> \
   --fee-denominator <NUM>
 ```
@@ -186,7 +186,7 @@ spl-stake-pool set-fee <POOL_ADDRESS> <FEE_TYPE> \
 **Example:**
 ```bash
 # Update withdrawal fee to 0.3%
-spl-stake-pool set-fee So11111111111111111111111111111111111111112 stake-withdrawal \
+fogo-stake-pool set-fee So11111111111111111111111111111111111111112 stake-withdrawal \
   --fee-numerator 3 \
   --fee-denominator 1000
 ```
@@ -197,7 +197,7 @@ Updates referral fees. Must be signed by the manager.
 
 **Usage:**
 ```bash
-spl-stake-pool set-referral-fee <POOL_ADDRESS> <FEE_TYPE> \
+fogo-stake-pool set-referral-fee <POOL_ADDRESS> <FEE_TYPE> \
   --fee-percentage <PERCENTAGE>
 ```
 
@@ -211,7 +211,7 @@ Updates funding authorities. Must be signed by the manager.
 
 **Usage:**
 ```bash
-spl-stake-pool set-funding-authority <POOL_ADDRESS> <AUTHORITY_TYPE> \
+fogo-stake-pool set-funding-authority <POOL_ADDRESS> <AUTHORITY_TYPE> \
   --new-authority <PUBKEY|none>
 ```
 
@@ -223,7 +223,7 @@ spl-stake-pool set-funding-authority <POOL_ADDRESS> <AUTHORITY_TYPE> \
 **Example:**
 ```bash
 # Remove tokens deposit authority (make permissionless)
-spl-stake-pool set-funding-authority So11111111111111111111111111111111111111112 sol-deposit \
+fogo-stake-pool set-funding-authority So11111111111111111111111111111111111111112 sol-deposit \
   --new-authority none
 ```
 
@@ -235,13 +235,13 @@ Adds a validator to the stake pool. Must be signed by the staker.
 
 **Usage:**
 ```bash
-spl-stake-pool add-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
+fogo-stake-pool add-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
   [--seed <SEED>]
 ```
 
 **Example:**
 ```bash
-spl-stake-pool add-validator So11111111111111111111111111111111111111112 \
+fogo-stake-pool add-validator So11111111111111111111111111111111111111112 \
   Vote111111111111111111111111111111111111111 \
   --seed 42
 ```
@@ -252,7 +252,7 @@ Removes a validator from the stake pool. Must be signed by the staker.
 
 **Usage:**
 ```bash
-spl-stake-pool remove-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT>
+fogo-stake-pool remove-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT>
 ```
 
 ### increase-validator-stake
@@ -261,7 +261,7 @@ Increases stake on a validator from the reserve. Must be signed by the staker.
 
 **Usage:**
 ```bash
-spl-stake-pool increase-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
+fogo-stake-pool increase-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
   --lamports <AMOUNT> \
   [--transient-stake-seed <SEED>]
 ```
@@ -269,7 +269,7 @@ spl-stake-pool increase-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> 
 **Example:**
 ```bash
 # Increase stake by 10 tokens
-spl-stake-pool increase-validator-stake So11111111111111111111111111111111111111112 \
+fogo-stake-pool increase-validator-stake So11111111111111111111111111111111111111112 \
   Vote111111111111111111111111111111111111111 \
   --lamports 10000000000
 ```
@@ -280,7 +280,7 @@ Decreases stake on a validator to the reserve. Must be signed by the staker.
 
 **Usage:**
 ```bash
-spl-stake-pool decrease-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
+fogo-stake-pool decrease-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
   --lamports <AMOUNT> \
   [--transient-stake-seed <SEED>]
 ```
@@ -291,7 +291,7 @@ Sets preferred validator for deposits or withdrawals. Must be signed by the stak
 
 **Usage:**
 ```bash
-spl-stake-pool set-preferred-validator <POOL_ADDRESS> <VALIDATOR_TYPE> \
+fogo-stake-pool set-preferred-validator <POOL_ADDRESS> <VALIDATOR_TYPE> \
   [--validator-vote-account <VOTE_ACCOUNT>]
 ```
 
@@ -302,11 +302,11 @@ spl-stake-pool set-preferred-validator <POOL_ADDRESS> <VALIDATOR_TYPE> \
 **Examples:**
 ```bash
 # Set preferred deposit validator
-spl-stake-pool set-preferred-validator So11111111111111111111111111111111111111112 deposit \
+fogo-stake-pool set-preferred-validator So11111111111111111111111111111111111111112 deposit \
   --validator-vote-account Vote111111111111111111111111111111111111111
 
 # Remove preferred withdraw validator
-spl-stake-pool set-preferred-validator So11111111111111111111111111111111111111112 withdraw
+fogo-stake-pool set-preferred-validator So11111111111111111111111111111111111111112 withdraw
 ```
 
 ## User Operations
@@ -317,7 +317,7 @@ Deposits a stake account into the pool in exchange for pool tokens.
 
 **Usage:**
 ```bash
-spl-stake-pool deposit-stake <POOL_ADDRESS> <STAKE_ACCOUNT> \
+fogo-stake-pool deposit-stake <POOL_ADDRESS> <STAKE_ACCOUNT> \
   [--token-receiver <TOKEN_ACCOUNT>] \
   [--referrer <TOKEN_ACCOUNT>] \
   [--pool-account <POOL_TOKEN_ACCOUNT>]
@@ -325,7 +325,7 @@ spl-stake-pool deposit-stake <POOL_ADDRESS> <STAKE_ACCOUNT> \
 
 **Example:**
 ```bash
-spl-stake-pool deposit-stake So11111111111111111111111111111111111111112 \
+fogo-stake-pool deposit-stake So11111111111111111111111111111111111111112 \
   Stake11111111111111111111111111111111111111 \
   --token-receiver 7GgPYjS5Dza89wV6FpZ23kUJRG5vbQ1GM25ezspYFSoE
 ```
@@ -336,7 +336,7 @@ Deposits all stake accounts owned by the user into the pool.
 
 **Usage:**
 ```bash
-spl-stake-pool deposit-all-stake <POOL_ADDRESS> \
+fogo-stake-pool deposit-all-stake <POOL_ADDRESS> \
   [--token-receiver <TOKEN_ACCOUNT>] \
   [--referrer <TOKEN_ACCOUNT>]
 ```
@@ -347,7 +347,7 @@ Deposits tokens directly into the pool's reserve in exchange for pool tokens.
 
 **Usage:**
 ```bash
-spl-stake-pool deposit-sol <POOL_ADDRESS> <AMOUNT> \
+fogo-stake-pool deposit-sol <POOL_ADDRESS> <AMOUNT> \
   [--token-receiver <TOKEN_ACCOUNT>] \
   [--referrer <TOKEN_ACCOUNT>] \
   [--from <SOURCE_ACCOUNT>]
@@ -356,7 +356,7 @@ spl-stake-pool deposit-sol <POOL_ADDRESS> <AMOUNT> \
 **Example:**
 ```bash
 # Deposit 5 tokens
-spl-stake-pool deposit-sol So11111111111111111111111111111111111111112 5.0 \
+fogo-stake-pool deposit-sol So11111111111111111111111111111111111111112 5.0 \
   --token-receiver 7GgPYjS5Dza89wV6FpZ23kUJRG5vbQ1GM25ezspYFSoE
 ```
 
@@ -366,7 +366,7 @@ Withdraws stake from the pool by burning pool tokens.
 
 **Usage:**
 ```bash
-spl-stake-pool withdraw-stake <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
+fogo-stake-pool withdraw-stake <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
   [--vote-account <VALIDATOR_VOTE_ACCOUNT>] \
   [--stake-receiver <STAKE_ACCOUNT>] \
   [--pool-account <POOL_TOKEN_ACCOUNT>]
@@ -375,7 +375,7 @@ spl-stake-pool withdraw-stake <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
 **Example:**
 ```bash
 # Withdraw 100 pool tokens worth of stake
-spl-stake-pool withdraw-stake So11111111111111111111111111111111111111112 100.0 \
+fogo-stake-pool withdraw-stake So11111111111111111111111111111111111111112 100.0 \
   --vote-account Vote111111111111111111111111111111111111111
 ```
 
@@ -385,7 +385,7 @@ Withdraws tokens directly from the pool's reserve by burning pool tokens.
 
 **Usage:**
 ```bash
-spl-stake-pool withdraw-sol <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
+fogo-stake-pool withdraw-sol <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
   [--sol-receiver <SOL_ACCOUNT>] \
   [--pool-account <POOL_TOKEN_ACCOUNT>]
 ```
@@ -393,7 +393,7 @@ spl-stake-pool withdraw-sol <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
 **Example:**
 ```bash
 # Withdraw tokens equivalent to 50 pool tokens
-spl-stake-pool withdraw-sol So11111111111111111111111111111111111111112 50.0
+fogo-stake-pool withdraw-sol So11111111111111111111111111111111111111112 50.0
 ```
 
 ## Information Commands
@@ -404,7 +404,7 @@ Shows all stake accounts managed by the pool.
 
 **Usage:**
 ```bash
-spl-stake-pool list <POOL_ADDRESS>
+fogo-stake-pool list <POOL_ADDRESS>
 ```
 
 **Output includes:**
@@ -420,7 +420,7 @@ Lists information about all stake pools.
 
 **Usage:**
 ```bash
-spl-stake-pool list-all
+fogo-stake-pool list-all
 ```
 
 **Output includes:**
@@ -438,7 +438,7 @@ Updates all balances in the pool after validators receive rewards.
 
 **Usage:**
 ```bash
-spl-stake-pool update <POOL_ADDRESS> \
+fogo-stake-pool update <POOL_ADDRESS> \
   [--no-merge] \
   [--force]
 ```
@@ -449,7 +449,7 @@ spl-stake-pool update <POOL_ADDRESS> \
 
 **Example:**
 ```bash
-spl-stake-pool update So11111111111111111111111111111111111111112
+fogo-stake-pool update So11111111111111111111111111111111111111112
 ```
 
 ## Token Metadata Commands
@@ -460,7 +460,7 @@ Creates metadata for the pool token.
 
 **Usage:**
 ```bash
-spl-stake-pool create-token-metadata <POOL_ADDRESS> \
+fogo-stake-pool create-token-metadata <POOL_ADDRESS> \
   --token-name <NAME> \
   --token-symbol <SYMBOL> \
   --token-uri <URI>
@@ -472,7 +472,7 @@ Updates existing token metadata.
 
 **Usage:**
 ```bash
-spl-stake-pool update-token-metadata <POOL_ADDRESS> \
+fogo-stake-pool update-token-metadata <POOL_ADDRESS> \
   --token-name <NAME> \
   --token-symbol <SYMBOL> \
   --token-uri <URI>
@@ -484,7 +484,7 @@ spl-stake-pool update-token-metadata <POOL_ADDRESS> \
 
 ```bash
 export SPL_STAKE_POOL_PROGRAM_ID=YourCustomProgramId11111111111111111111111111
-spl-stake-pool list-all
+fogo-stake-pool list-all
 ```
 
 ### Batch Operations
@@ -517,7 +517,7 @@ solana stakes <STAKE_ACCOUNT>  # Check activation status
 ```bash
 # Error: Pool balances are stale
 # Solution: Update pool first
-spl-stake-pool update <POOL_ADDRESS>
+fogo-stake-pool update <POOL_ADDRESS>
 ```
 
 ### Configuration File
@@ -534,7 +534,7 @@ Create a configuration file to avoid repeating common options:
 
 Use with:
 ```bash
-spl-stake-pool --config ./my-config.json list-all
+fogo-stake-pool --config ./my-config.json list-all
 ```
 
 ## Integration Examples
@@ -549,10 +549,10 @@ POOL_ADDRESS="So11111111111111111111111111111111111111112"
 MANAGER_KEY="~/.config/fogo/manager.json"
 
 # Update pool
-spl-stake-pool update $POOL_ADDRESS --manager $MANAGER_KEY
+fogo-stake-pool update $POOL_ADDRESS --manager $MANAGER_KEY
 
 # Check if any validators need rebalancing
-spl-stake-pool list $POOL_ADDRESS --output json | \
+fogo-stake-pool list $POOL_ADDRESS --output json | \
   jq '.accounts[] | select(.transient_stake_lamports > 0)'
 ```
 
@@ -560,7 +560,7 @@ spl-stake-pool list $POOL_ADDRESS --output json | \
 
 ```bash
 # In automated deployment pipeline
-spl-stake-pool create-pool \
+fogo-stake-pool create-pool \
   --epoch-fee-numerator 3 \
   --epoch-fee-denominator 100 \
   --withdrawal-fee-numerator 5 \
@@ -586,14 +586,14 @@ spl-stake-pool create-pool \
 
 Enable verbose output for troubleshooting:
 ```bash
-spl-stake-pool --verbose list <POOL_ADDRESS>
+fogo-stake-pool --verbose list <POOL_ADDRESS>
 ```
 
 ### Dry Run Mode
 
 Test transactions without executing:
 ```bash
-spl-stake-pool --dry-run deposit-sol <POOL_ADDRESS> 1.0
+fogo-stake-pool --dry-run deposit-sol <POOL_ADDRESS> 1.0
 ```
 
 This CLI reference provides comprehensive documentation for all Fogo Stake Pool operations. For programmatic integration, see the [API Reference](./api-reference.md#typescript-sdk) and [API Reference](./api-reference.md).

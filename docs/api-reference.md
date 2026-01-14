@@ -373,7 +373,7 @@ UpdateStakePoolBalance
 ### Installation
 
 ```bash
-npm install @ignitionfi/spl-stake-pool @solana/web3.js @solana/spl-token
+npm install @ignitionfi/fogo-stake-pool @solana/web3.js @solana/spl-token
 ```
 
 ### Core Functions
@@ -831,7 +831,7 @@ export const MINIMUM_ACTIVE_STAKE = 1_000_000
 #### create-pool
 
 ```bash
-spl-stake-pool create-pool \
+fogo-stake-pool create-pool \
   --epoch-fee-numerator <NUM> \
   --epoch-fee-denominator <NUM> \
   --withdrawal-fee-numerator <NUM> \
@@ -849,7 +849,7 @@ spl-stake-pool create-pool \
 #### set-manager
 
 ```bash
-spl-stake-pool set-manager <POOL_ADDRESS> \
+fogo-stake-pool set-manager <POOL_ADDRESS> \
   --new-manager <PUBKEY> \
   --new-fee-receiver <PUBKEY>
 ```
@@ -857,7 +857,7 @@ spl-stake-pool set-manager <POOL_ADDRESS> \
 #### set-fee
 
 ```bash
-spl-stake-pool set-fee <POOL_ADDRESS> <FEE_TYPE> \
+fogo-stake-pool set-fee <POOL_ADDRESS> <FEE_TYPE> \
   --fee-numerator <NUM> \
   --fee-denominator <NUM>
 ```
@@ -869,27 +869,27 @@ Fee types: `epoch`, `stake-deposit`, `sol-deposit`, `stake-withdrawal`, `sol-wit
 #### add-validator
 
 ```bash
-spl-stake-pool add-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
+fogo-stake-pool add-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
   [--seed <SEED>]
 ```
 
 #### remove-validator
 
 ```bash
-spl-stake-pool remove-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT>
+fogo-stake-pool remove-validator <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT>
 ```
 
 #### increase-validator-stake
 
 ```bash
-spl-stake-pool increase-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
+fogo-stake-pool increase-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
   --lamports <AMOUNT>
 ```
 
 #### decrease-validator-stake
 
 ```bash
-spl-stake-pool decrease-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
+fogo-stake-pool decrease-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> \
   --lamports <AMOUNT>
 ```
 
@@ -898,7 +898,7 @@ spl-stake-pool decrease-validator-stake <POOL_ADDRESS> <VALIDATOR_VOTE_ACCOUNT> 
 #### deposit-sol
 
 ```bash
-spl-stake-pool deposit-sol <POOL_ADDRESS> <AMOUNT> \
+fogo-stake-pool deposit-sol <POOL_ADDRESS> <AMOUNT> \
   [--token-receiver <TOKEN_ACCOUNT>] \
   [--referrer <TOKEN_ACCOUNT>]
 ```
@@ -906,21 +906,21 @@ spl-stake-pool deposit-sol <POOL_ADDRESS> <AMOUNT> \
 #### withdraw-sol
 
 ```bash
-spl-stake-pool withdraw-sol <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
+fogo-stake-pool withdraw-sol <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
   [--sol-receiver <SOL_ACCOUNT>]
 ```
 
 #### deposit-stake
 
 ```bash
-spl-stake-pool deposit-stake <POOL_ADDRESS> <STAKE_ACCOUNT> \
+fogo-stake-pool deposit-stake <POOL_ADDRESS> <STAKE_ACCOUNT> \
   [--token-receiver <TOKEN_ACCOUNT>]
 ```
 
 #### withdraw-stake
 
 ```bash
-spl-stake-pool withdraw-stake <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
+fogo-stake-pool withdraw-stake <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
   [--vote-account <VALIDATOR_VOTE_ACCOUNT>] \
   [--stake-receiver <STAKE_ACCOUNT>]
 ```
@@ -930,19 +930,19 @@ spl-stake-pool withdraw-stake <POOL_ADDRESS> <POOL_TOKEN_AMOUNT> \
 #### list
 
 ```bash
-spl-stake-pool list <POOL_ADDRESS>
+fogo-stake-pool list <POOL_ADDRESS>
 ```
 
 #### list-all
 
 ```bash
-spl-stake-pool list-all
+fogo-stake-pool list-all
 ```
 
 #### update
 
 ```bash
-spl-stake-pool update <POOL_ADDRESS> \
+fogo-stake-pool update <POOL_ADDRESS> \
   [--no-merge] \
   [--force]
 ```
@@ -1003,7 +1003,7 @@ transaction.add(...depositInstructions);
 transaction.add(...updateInstructions);
 
 // CLI - use update command for multiple validators
-spl-stake-pool update POOL_ADDRESS
+fogo-stake-pool update POOL_ADDRESS
 ```
 
 ### Connection Management
@@ -1028,9 +1028,9 @@ const connection = new Connection(rpcUrl, {
 
 ### SDK Versions
 
-- **TypeScript SDK**: `@solana/spl-stake-pool@1.1.8`
-- **Python Client**: `spl-stake-pool@2.0.x`
-- **CLI Tool**: `spl-stake-pool-cli@2.0.1`
+- **TypeScript SDK**: `@ignitionfi/fogo-stake-pool@1.1.8`
+- **Python Client**: `fogo-stake-pool@2.0.x`
+- **CLI Tool**: `fogo-stake-pool-cli@2.0.1`
 
 ### Breaking Changes
 
@@ -1052,7 +1052,7 @@ Breaking changes are announced with:
 
 - **GitHub**: Issues and discussions
 - **FOGO Discord**: `#developers` channel
-- **Stack Overflow**: Tag questions with `fogo` and `spl-stake-pool`
+- **Stack Overflow**: Tag questions with `fogo` and `fogo-stake-pool`
 
 ### Security
 

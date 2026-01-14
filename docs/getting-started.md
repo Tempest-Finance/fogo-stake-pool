@@ -46,8 +46,8 @@ pnpm --version
 
 ```bash
 # Clone the repository
-git clone https://github.com/tempest-finance/spl-stake-pool.git
-cd spl-stake-pool
+git clone https://github.com/Tempest-Finance/fogo-stake-pool.git
+cd fogo-stake-pool
 
 # Install all dependencies
 pnpm install
@@ -85,9 +85,9 @@ The TypeScript SDK provides a simple interface for interacting with stake pools.
 ### Installation
 
 ```bash
-npm install @ignitionfi/spl-stake-pool @solana/web3.js
+npm install @ignitionfi/fogo-stake-pool @solana/web3.js
 # or
-pnpm add @ignitionfi/spl-stake-pool @solana/web3.js
+pnpm add @ignitionfi/fogo-stake-pool @solana/web3.js
 ```
 
 ### Basic Setup
@@ -98,7 +98,7 @@ import {
   getStakePoolAccount,
   getStakePoolAccounts,
   STAKE_POOL_PROGRAM_ID,
-} from '@ignitionfi/spl-stake-pool';
+} from '@ignitionfi/fogo-stake-pool';
 
 // Connect to cluster
 const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -133,7 +133,7 @@ console.log('Total lamports:', stakePool.account.data.totalLamports.toString());
 #### Deposit SOL
 
 ```typescript
-import { depositSol } from '@ignitionfi/spl-stake-pool';
+import { depositSol } from '@ignitionfi/fogo-stake-pool';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 
 // Deposit 1 SOL into the stake pool
@@ -160,7 +160,7 @@ console.log('Deposit successful:', signature);
 #### Deposit Existing Stake Account
 
 ```typescript
-import { depositStake } from '@ignitionfi/spl-stake-pool';
+import { depositStake } from '@ignitionfi/fogo-stake-pool';
 
 // Deposit an existing stake account into the pool
 const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS');
@@ -189,7 +189,7 @@ console.log('Stake deposited:', signature);
 #### Withdraw SOL
 
 ```typescript
-import { withdrawSol } from '@ignitionfi/spl-stake-pool';
+import { withdrawSol } from '@ignitionfi/fogo-stake-pool';
 
 // Withdraw 0.5 pool tokens worth of SOL
 const poolTokenAmount = 0.5;
@@ -214,7 +214,7 @@ console.log('Withdrawal successful:', signature);
 #### Withdraw Stake
 
 ```typescript
-import { withdrawStake } from '@ignitionfi/spl-stake-pool';
+import { withdrawStake } from '@ignitionfi/fogo-stake-pool';
 
 // Withdraw stake from the pool
 const poolTokenAmount = 1.0;
@@ -248,7 +248,7 @@ import { useSession } from '@fogo/sessions-sdk-react';
 import {
   depositWsolWithSession,
   withdrawWsolWithSession,
-} from '@ignitionfi/spl-stake-pool';
+} from '@ignitionfi/fogo-stake-pool';
 
 // In your React component
 function StakePoolComponent() {
@@ -266,7 +266,7 @@ function StakePoolComponent() {
 #### Deposit with Session
 
 ```typescript
-import { depositWsolWithSession } from '@ignitionfi/spl-stake-pool';
+import { depositWsolWithSession } from '@ignitionfi/fogo-stake-pool';
 
 async function depositWithSession(
   connection,
@@ -300,7 +300,7 @@ async function depositWithSession(
 #### Withdraw with Session
 
 ```typescript
-import { withdrawWsolWithSession } from '@ignitionfi/spl-stake-pool';
+import { withdrawWsolWithSession } from '@ignitionfi/fogo-stake-pool';
 
 async function withdrawWithSession(
   connection,
@@ -332,7 +332,7 @@ import {
   withdrawStakeWithSession,
   findNextUserStakeSeed,
   getUserStakeAccounts
-} from '@ignitionfi/spl-stake-pool';
+} from '@ignitionfi/fogo-stake-pool';
 
 async function withdrawStakeWithSessionExample(
   connection,
@@ -387,7 +387,7 @@ async function getUserStakes(connection, userPubkey) {
 #### Add Validator to Pool
 
 ```typescript
-import { addValidatorToPool } from '@ignitionfi/spl-stake-pool';
+import { addValidatorToPool } from '@ignitionfi/fogo-stake-pool';
 
 const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS');
 
@@ -410,7 +410,7 @@ console.log('Validator added:', signature);
 #### Remove Validator from Pool
 
 ```typescript
-import { removeValidatorFromPool } from '@ignitionfi/spl-stake-pool';
+import { removeValidatorFromPool } from '@ignitionfi/fogo-stake-pool';
 
 const { instructions } = await removeValidatorFromPool(
   connection,
@@ -431,7 +431,7 @@ console.log('Validator removed:', signature);
 #### Increase Validator Stake
 
 ```typescript
-import { increaseValidatorStake } from '@ignitionfi/spl-stake-pool';
+import { increaseValidatorStake } from '@ignitionfi/fogo-stake-pool';
 
 const lamports = 5_000_000_000; // 5 SOL to add to validator
 
@@ -455,7 +455,7 @@ console.log('Validator stake increased:', signature);
 #### Decrease Validator Stake
 
 ```typescript
-import { decreaseValidatorStake } from '@ignitionfi/spl-stake-pool';
+import { decreaseValidatorStake } from '@ignitionfi/fogo-stake-pool';
 
 const lamports = 2_000_000_000; // 2 SOL to remove from validator
 
@@ -481,7 +481,7 @@ console.log('Validator stake decreased:', signature);
 #### Update Stake Pool
 
 ```typescript
-import { updateStakePool } from '@ignitionfi/spl-stake-pool';
+import { updateStakePool } from '@ignitionfi/fogo-stake-pool';
 
 // Update pool after epoch change
 const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
@@ -508,7 +508,7 @@ console.log('Stake pool updated');
 #### Get Stake Pool Information
 
 ```typescript
-import { stakePoolInfo } from '@ignitionfi/spl-stake-pool';
+import { stakePoolInfo } from '@ignitionfi/fogo-stake-pool';
 
 // Get comprehensive pool information
 const info = await stakePoolInfo(connection, stakePoolAddress);
@@ -548,7 +548,7 @@ Now that you've set up your development environment and created your first stake
 
 ### Get Help
 
-- **Issues**: Report bugs at [GitHub Issues](https://github.com/tempest-finance/spl-stake-pool/issues)
+- **Issues**: Report bugs at [GitHub Issues](https://github.com/Tempest-Finance/fogo-stake-pool/issues)
 - **Community**: Join the Discord for developer support
 - **Contributing**: Submit pull requests to improve the codebase
 

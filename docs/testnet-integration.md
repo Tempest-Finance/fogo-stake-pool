@@ -31,7 +31,7 @@ npm install @ignitionfi/fogo-stake-pool
 ### Example: Pool Info & Exchange Rate
 
 ```typescript
-import { getStakePoolAccount } from '@ignitionfi/spl-stake-pool'
+import { getStakePoolAccount } from '@ignitionfi/fogo-stake-pool'
 import { Connection, PublicKey } from '@solana/web3.js'
 
 const connection = new Connection('https://testnet.fogo.io')
