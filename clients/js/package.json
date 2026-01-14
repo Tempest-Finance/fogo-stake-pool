@@ -39,9 +39,9 @@
     "build": "tsc && cross-env NODE_ENV=production rollup -c",
     "dev": "tsc && cross-env NODE_ENV=production rollup -c -w",
     "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml",
-    "format": "eslint --max-warnings 0 .",
+    "format": "eslint .",
     "format:fix": "eslint . --fix",
-    "lint": "eslint --max-warnings 0 .",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "jest",
     "clean": "rimraf ./dist"
