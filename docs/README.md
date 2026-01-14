@@ -48,7 +48,7 @@ The main FOGO blockchain program written in Rust that handles all on-chain opera
 
 A comprehensive CLI tool for interacting with stake pools, supporting all program operations from pool creation to complex validator management tasks.
 
-### TypeScript SDK (`packages/sdk/`)
+### TypeScript SDK (`clients/js/`)
 
 A JavaScript/TypeScript client library providing type-safe interfaces to the stake pool program, suitable for Node.js backends and integration services.
 
@@ -62,7 +62,7 @@ Python client library for stake pool operations, useful for data analysis and ba
 | -------------- | -------------------------------------------------- | ----------------------------------- |
 | FOGO Program   | [Program Guide](./program-guide.md)                | [`program/`](../program/)           |
 | CLI Tool       | [CLI Reference](./cli-reference.md)                | [`clients/cli/`](../clients/cli/)   |
-| TypeScript SDK | [API Reference](./api-reference.md#typescript-sdk) | [`packages/sdk/`](../packages/sdk/) |
+| TypeScript SDK | [API Reference](./api-reference.md#typescript-sdk) | [`clients/js/`](../clients/js/) |
 | Python Client  | [API Reference](./api-reference.md#python-client)  | [`clients/py/`](../clients/py/)     |
 
 ## Key Concepts

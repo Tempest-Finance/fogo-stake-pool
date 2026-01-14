@@ -222,38 +222,38 @@ cargo test -p spl-stake-pool-cli
 
 ### 3. TypeScript SDK Development
 
-Located in `packages/sdk/`:
+Located in `clients/js/`:
 
 ```bash
 # Build SDK
 pnpm sdk build
 # OR
-cd packages/sdk && pnpm build
+cd clients/js && pnpm build
 
 # Development mode (watch)
-cd packages/sdk && pnpm dev
+cd clients/js && pnpm dev
 
 # Test SDK
 pnpm sdk test
 # OR
-cd packages/sdk && pnpm test
+cd clients/js && pnpm test
 
 # Lint and format
-cd packages/sdk && pnpm lint
-cd packages/sdk && pnpm format
+cd clients/js && pnpm lint
+cd clients/js && pnpm format
 ```
 
 #### SDK Testing
 
 ```bash
 # Run tests with coverage
-cd packages/sdk && pnpm test --coverage
+cd clients/js && pnpm test --coverage
 
 # Run specific test file
-cd packages/sdk && pnpm test src/instruction.test.ts
+cd clients/js && pnpm test src/instruction.test.ts
 
 # Watch mode for development
-cd packages/sdk && pnpm test --watch
+cd clients/js && pnpm test --watch
 ```
 
 ## Testing Setup

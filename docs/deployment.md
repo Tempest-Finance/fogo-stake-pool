@@ -347,7 +347,7 @@ The SDK is published to npm and doesn't require separate deployment:
 
 ```bash
 # Build and test SDK
-cd packages/sdk
+cd clients/js
 pnpm build
 pnpm test
 

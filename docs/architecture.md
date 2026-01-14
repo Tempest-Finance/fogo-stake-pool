@@ -169,7 +169,7 @@ Pool Tokens → Validation → Stake Preparation → tokens Transfer
 - **Architecture**: Single binary with command-based interface
 - **Key Features**: Pool creation, validator management, fee adjustment
 
-### 2. TypeScript SDK (`packages/sdk/`)
+### 2. TypeScript SDK (`clients/js/`)
 
 ## Performance Considerations
 
