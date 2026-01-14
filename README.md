@@ -1,6 +1,6 @@
 # Fogo Stake Pool
 
-[![FOGO](https://img.shields.io/badge/FOGO-Blockchain-FF6B35?logo=lightning&logoColor=white&style=for-the-badge)](https://fogo.io)
+[![FOGO](https://img.shields.io/badge/FOGO-grey?logo=lightning&style=for-the-badge)](https://fogo.io)
 [![npm](https://img.shields.io/npm/v/@ignitionfi/fogo-stake-pool?logo=npm&logoColor=white&style=for-the-badge)](https://www.npmjs.com/package/@ignitionfi/fogo-stake-pool)
 [![CI](https://img.shields.io/github/actions/workflow/status/Tempest-Finance/fogo-stake-pool/main.yml?logo=githubactions&logoColor=white&style=for-the-badge&label=CI)](https://github.com/Tempest-Finance/fogo-stake-pool/actions/workflows/main.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](./LICENSE)
