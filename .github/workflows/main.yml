@@ -7,6 +7,8 @@ on:
     branches: [main]
 
 env:
+  JS_PACKAGES: "['clients-js']"
+  PY_PACKAGES: "['clients-py']"
   SBPF_PROGRAM_PACKAGES: "['spl-stake-pool']"
   RUST_PACKAGES: "['spl-stake-pool', 'fogo-stake-pool-cli']"
 
@@ -15,6 +17,8 @@ jobs:
     name: Set variables for reusable workflow
     runs-on: ubuntu-latest
     outputs:
+      JS_PACKAGES: ${{ steps.compute.outputs.JS_PACKAGES }}
+      PY_PACKAGES: ${{ steps.compute.outputs.PY_PACKAGES }}
       SBPF_PROGRAM_PACKAGES: ${{ steps.compute.outputs.SBPF_PROGRAM_PACKAGES }}
       RUST_PACKAGES: ${{ steps.compute.outputs.RUST_PACKAGES }}
       RUST_TOOLCHAIN_NIGHTLY: ${{ steps.compute.outputs.RUST_TOOLCHAIN_NIGHTLY }}
@@ -27,6 +31,8 @@ jobs:
         id: compute
         shell: bash
         run: |
+          echo "JS_PACKAGES=${{ env.JS_PACKAGES }}" >> $GITHUB_OUTPUT
+          echo "PY_PACKAGES=${{ env.PY_PACKAGES }}" >> $GITHUB_OUTPUT
           echo "SBPF_PROGRAM_PACKAGES=${{ env.SBPF_PROGRAM_PACKAGES }}" >> $GITHUB_OUTPUT
           echo "RUST_PACKAGES=${{ env.RUST_PACKAGES }}" >> $GITHUB_OUTPUT
           echo "RUST_TOOLCHAIN_NIGHTLY=$(make rust-toolchain-nightly)" >> "$GITHUB_OUTPUT"
@@ -36,6 +42,8 @@ jobs:
     needs: set_env
     uses: solana-program/actions/.github/workflows/main.yml@main
     with:
+      js-packages: ${{ needs.set_env.outputs.JS_PACKAGES }}
+      py-packages: ${{ needs.set_env.outputs.PY_PACKAGES }}
       sbpf-program-packages: ${{ needs.set_env.outputs.SBPF_PROGRAM_PACKAGES }}
       rust-packages: ${{ needs.set_env.outputs.RUST_PACKAGES }}
       rustfmt-toolchain: ${{ needs.set_env.outputs.RUST_TOOLCHAIN_NIGHTLY }}
