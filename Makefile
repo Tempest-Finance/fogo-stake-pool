@@ -33,9 +33,11 @@ rust-toolchain-nightly:
 solana-cli-version:
 	@echo $(SOLANA_CLI_VERSION)
 
+# SBF build targets (called with directory paths like program)
 build-sbf-%:
 	RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
+# JS CI targets (called with path patterns like clients-js)
 build-js-%:
 	cd $(call make-path,$*) && pnpm install && pnpm build $(ARGS)
 
@@ -51,6 +53,7 @@ lint-js-%:
 test-js-%:
 	cd $(call make-path,$*) && pnpm install && pnpm build && pnpm test $(ARGS)
 
+# Python CI targets (called with path patterns like clients-py)
 setup-py-venv-%:
 	cd $(call make-path,$*) && python3 -m venv venv \
 		&& ./venv/bin/pip3 install -r requirements.txt \
@@ -71,6 +74,17 @@ lint-py-%:
 test-py-%:
 	$(MAKE) setup-py-venv-$*
 	cd $(call make-path,$*) && ./venv/bin/python3 -m pytest
+
+# Rust CI targets (called with Cargo package names like spl-stake-pool)
+# NOTE: These must come AFTER js/py targets so more specific patterns match first
+format-check-%:
+	cargo $(nightly) fmt -p $* -- --check
+
+clippy-%:
+	RUSTFLAGS="--allow=unexpected_cfgs" cargo $(nightly) clippy -p $* --all-targets -- -D warnings
+
+test-%:
+	RUSTFLAGS="--allow=unexpected_cfgs" SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p $*
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Build
@@ -113,6 +127,9 @@ lint: ## Run clippy
 
 audit: ## Run security audit
 	cargo audit --ignore RUSTSEC-2022-0093 --ignore RUSTSEC-2024-0344
+
+spellcheck: ## Run spellcheck
+	typos
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Deploy
