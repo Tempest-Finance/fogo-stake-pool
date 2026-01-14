@@ -4,8 +4,8 @@ A liquid staking protocol for the FOGO blockchain, forked from [SPL Stake Pool](
 
 ## Program IDs
 
-| Network | Address |
-|---------|---------|
+| Network | Address                                       |
+| ------- | --------------------------------------------- |
 | Mainnet | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
 | Testnet | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
 
@@ -24,12 +24,12 @@ make help
 
 ## Components
 
-| Directory | Description |
-|-----------|-------------|
-| `program/` | On-chain Solana BPF program (Rust) |
-| `clients/cli/` | Command-line interface |
-| `clients/js/` | TypeScript SDK (`@ignitionfi/fogo-stake-pool`) |
-| `clients/py/` | Python client library |
+| Directory      | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `program/`     | On-chain Solana BPF program (Rust)             |
+| `clients/cli/` | Command-line interface                         |
+| `clients/js/`  | TypeScript SDK (`@ignitionfi/fogo-stake-pool`) |
+| `clients/py/`  | Python client library                          |
 
 ## Documentation
 
@@ -38,9 +38,10 @@ make help
 - [Program Guide](./docs/program-guide.md)
 - [Testnet Integration](./docs/testnet-integration.md)
 
-## Audit
+## Audits
 
-Audit reports are available in the [`audits/`](./audits/) directory.
+- **Fogo Stake Pool audits**: [`audits/`](./audits/)
+- **SPL Stake Pool audits**: [solana-labs/security-audits](https://github.com/solana-labs/security-audits#stake-pool)
 
 ## License
 
