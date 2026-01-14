@@ -280,7 +280,7 @@ describe('stakePoolProgram', () => {
     connection.getBalance = jest.fn(async () => balance)
 
     connection.getAccountInfo = jest.fn(async (pubKey) => {
-      if (pubKey == stakePoolAddress) {
+      if (pubKey === stakePoolAddress) {
         return stakePoolAccount
       }
       return <AccountInfo<any>>{
@@ -338,7 +338,7 @@ describe('stakePoolProgram', () => {
 
     it('should throw an error with invalid token account', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
@@ -374,7 +374,7 @@ describe('stakePoolProgram', () => {
 
     it('should call successfully', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
@@ -395,7 +395,7 @@ describe('stakePoolProgram', () => {
 
     it('should throw an error with invalid token account', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         return null
@@ -408,7 +408,7 @@ describe('stakePoolProgram', () => {
 
     it('should throw an error with invalid token account balance', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
@@ -427,7 +427,7 @@ describe('stakePoolProgram', () => {
 
     it('should call successfully', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
@@ -450,7 +450,7 @@ describe('stakePoolProgram', () => {
     it('withdraw to a stake account provided', async () => {
       const stakeReceiver = new PublicKey(20)
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
@@ -459,7 +459,9 @@ describe('stakePoolProgram', () => {
         if (pubKey.equals(stakePoolMock.validatorList)) {
           return mockValidatorList()
         }
-        if (pubKey.equals(CONSTANTS.validatorStakeAccountAddress)) { return mockValidatorsStakeAccount() }
+        if (pubKey.equals(CONSTANTS.validatorStakeAccountAddress)) {
+          return mockValidatorsStakeAccount()
+        }
         return null
       })
       connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
@@ -505,7 +507,7 @@ describe('stakePoolProgram', () => {
   describe('createPoolTokenMetadata', () => {
     it('should create pool token metadata', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount
         }
         return null

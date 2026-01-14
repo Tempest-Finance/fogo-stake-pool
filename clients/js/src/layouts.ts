@@ -84,6 +84,7 @@ export function futureEpoch<T>(layout: Layout<T>, property?: string): LayoutCls<
   return new FutureEpochLayout<T>(layout, property)
 }
 
+/* eslint-disable ts/no-redeclare -- Superstruct pattern: type + const with same name */
 export type StakeAccountType = Infer<typeof StakeAccountType>
 export const StakeAccountType = enums(['uninitialized', 'initialized', 'delegated', 'rewardsPool'])
 
@@ -123,6 +124,7 @@ export const StakeAccount = type({
   type: StakeAccountType,
   info: optional(StakeAccountInfo),
 })
+/* eslint-enable ts/no-redeclare */
 export interface Lockup {
   unixTimestamp: BN
   epoch: BN
