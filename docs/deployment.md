@@ -1,10 +1,10 @@
-# Ignition Stake Pool Deployment Guide
+# Fogo Stake Pool Deployment Guide
 
-This guide provides comprehensive instructions for deploying Ignition Stake Pool programs and applications across different FOGO networks and environments.
+This guide provides comprehensive instructions for deploying Fogo Stake Pool programs and applications across different FOGO networks and environments.
 
 ## Overview
 
-The Ignition Stake Pool project supports deployment to multiple environments:
+The Fogo Stake Pool project supports deployment to multiple environments:
 
 - **Local Development**: Local FOGO validator for testing
 - **Testnet**: FOGO's testing network (via Fogo infrastructure)
@@ -40,7 +40,7 @@ solana config set --url http://localhost:8899       # Local
 
 ### Program ID and Keypairs
 
-The Ignition Stake Pool program uses a deterministic Program ID:
+The Fogo Stake Pool program uses a deterministic Program ID:
 
 ```bash
 # Program details
@@ -529,4 +529,4 @@ solana program set-upgrade-authority \
     --final
 ```
 
-This deployment guide covers all aspects of deploying Ignition Stake Pool across different networks. For development setup, see the [Development Guide](./development.md).
+This deployment guide covers all aspects of deploying Fogo Stake Pool across different networks. For development setup, see the [Development Guide](./development.md).

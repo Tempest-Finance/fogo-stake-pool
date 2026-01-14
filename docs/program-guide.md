@@ -1,12 +1,12 @@
-# Ignition Stake Pool Program Guide
+# Fogo Stake Pool Program Guide
 
-This guide provides comprehensive documentation for the on-chain Ignition Stake Pool program, including all instructions, account structures, and program-derived addresses.
+This guide provides comprehensive documentation for the on-chain Fogo Stake Pool program, including all instructions, account structures, and program-derived addresses.
 
 ## Program Overview
 
 **Program ID:** `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
 
-The Ignition Stake Pool program is a FOGO blockchain program that enables the creation and management of stake pools - collections of delegated stake accounts that are managed collectively and represented by fungible pool tokens.
+The Fogo Stake Pool program is a FOGO blockchain program that enables the creation and management of stake pools - collections of delegated stake accounts that are managed collectively and represented by fungible pool tokens.
 
 ## Core Concepts
 
@@ -743,5 +743,5 @@ pub enum StakePoolError {
 - Diversify across multiple high-performing validators
 - Monitor validator health and commission rates
 
-This comprehensive guide covers all aspects of the Ignition Stake Pool program.
+This comprehensive guide covers all aspects of the Fogo Stake Pool program.
 For implementation examples and integration patterns, see the [API Reference](./api-reference.md#typescript-sdk-api) and [API Reference](./api-reference.md).

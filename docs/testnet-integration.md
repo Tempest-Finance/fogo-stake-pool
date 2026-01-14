@@ -1,4 +1,4 @@
-# Ignition Stake Pool - FOGO Testnet
+# Fogo Stake Pool - FOGO Testnet
 
 ## Addresses
 

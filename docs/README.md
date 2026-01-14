@@ -1,10 +1,10 @@
-# Ignition Stake Pool Documentation
+# Fogo Stake Pool Documentation
 
-Welcome to the comprehensive documentation for the Ignition Stake Pool program - a FOGO blockchain program for creating and managing pools of staked tokens.
+Welcome to the comprehensive documentation for the Fogo Stake Pool program - a FOGO blockchain program for creating and managing pools of staked tokens.
 
 ## Overview
 
-The Ignition Stake Pool program allows users to pool their stake accounts and receive liquid tokens in return, enabling better capital efficiency and democratizing access to staking rewards on FOGO.
+The Fogo Stake Pool program allows users to pool their stake accounts and receive liquid tokens in return, enabling better capital efficiency and democratizing access to staking rewards on FOGO.
 
 **Program ID:** `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
 

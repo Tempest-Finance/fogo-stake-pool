@@ -1,15 +1,15 @@
-# Ignition Stake Pool Architecture
+# Fogo Stake Pool Architecture
 
-This document provides a comprehensive overview of the Ignition Stake Pool system architecture, design decisions, and core concepts.
+This document provides a comprehensive overview of the Fogo Stake Pool system architecture, design decisions, and core concepts.
 
 ## System Overview
 
-The Ignition Stake Pool program implements a liquid staking protocol on FOGO blockchain, allowing users to pool their stake and receive liquid tokens in return. 
+The Fogo Stake Pool program implements a liquid staking protocol on FOGO blockchain, allowing users to pool their stake and receive liquid tokens in return. 
 The system is designed for security, efficiency, and scalability while maintaining decentralization.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Ignition Stake Pool System                    │
+│                   Fogo Stake Pool System                    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────┐    ┌──────────────┐    ┌─────────────────┐     │

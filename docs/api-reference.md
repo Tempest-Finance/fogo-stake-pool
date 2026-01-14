@@ -1,6 +1,6 @@
-# Ignition Stake Pool API Reference
+# Fogo Stake Pool API Reference
 
-This document provides a comprehensive API reference for all Ignition Stake Pool components including the FOGO blockchain program instructions,
+This document provides a comprehensive API reference for all Fogo Stake Pool components including the FOGO blockchain program instructions,
 TypeScript SDK, CLI commands, and Python client.
 
 ## Program Instructions API
@@ -1060,4 +1060,4 @@ Breaking changes are announced with:
 - Security audit reports available in repository
 - Bug bounty program (if applicable)
 
-This API reference provides comprehensive documentation for all Ignition Stake Pool components. For specific implementation examples, see the individual component guides.
+This API reference provides comprehensive documentation for all Fogo Stake Pool components. For specific implementation examples, see the individual component guides.

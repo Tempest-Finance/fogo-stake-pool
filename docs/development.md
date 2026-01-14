@@ -1,6 +1,6 @@
-# Ignition Stake Pool Development Guide
+# Fogo Stake Pool Development Guide
 
-This guide provides comprehensive instructions for setting up a development environment, building, testing, and contributing to the Ignition Stake Pool project.
+This guide provides comprehensive instructions for setting up a development environment, building, testing, and contributing to the Fogo Stake Pool project.
 
 ## Development Environment Setup
 
@@ -503,4 +503,4 @@ The project includes GitHub Actions workflows:
 - [Discord](https://discord.gg/FogoChain)
 - [Stack Overflow `fogo` tag](https://stackoverflow.com/questions/tagged/fogo)
 
-This development guide provides everything needed to contribute effectively to the Ignition Stake Pool project. For deployment procedures, see the [Deployment Guide](./deployment.md).
+This development guide provides everything needed to contribute effectively to the Fogo Stake Pool project. For deployment procedures, see the [Deployment Guide](./deployment.md).

@@ -1,6 +1,6 @@
-# Getting Started with Ignition Stake Pool
+# Getting Started with Fogo Stake Pool
 
-This guide will help you quickly set up your development environment and using the Ignition Stake Pool program. 
+This guide will help you quickly set up your development environment and using the Fogo Stake Pool program. 
 Whether you're building a dApp, managing validators, or integrating staking into your application, this guide covers everything you need to get started.
 
 ## Prerequisites
@@ -571,4 +571,4 @@ Now that you've set up your development environment and created your first stake
 
 ---
 
-You're now ready to build with Ignition Stake Pool! For detailed API documentation and advanced patterns, explore the other guides in this documentation.
+You're now ready to build with Fogo Stake Pool! For detailed API documentation and advanced patterns, explore the other guides in this documentation.

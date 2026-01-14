@@ -2,9 +2,12 @@
 
 A liquid staking protocol for the FOGO blockchain, forked from [SPL Stake Pool](https://github.com/solana-program/stake-pool).
 
-## Program ID
+## Program IDs
 
-`SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
+| Network | Address                                       |
+| ------- | --------------------------------------------- |
+| Mainnet | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
+| Testnet | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
 
 ## Quick Start
 

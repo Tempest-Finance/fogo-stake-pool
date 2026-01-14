@@ -1,6 +1,6 @@
-# Ignition Stake Pool CLI Reference
+# Fogo Stake Pool CLI Reference
 
-This document provides complete reference documentation for the Ignition Stake Pool command-line interface (CLI) tool.
+This document provides complete reference documentation for the Fogo Stake Pool command-line interface (CLI) tool.
 
 ## Installation
 
@@ -596,4 +596,4 @@ Test transactions without executing:
 spl-stake-pool --dry-run deposit-sol <POOL_ADDRESS> 1.0
 ```
 
-This CLI reference provides comprehensive documentation for all Ignition Stake Pool operations. For programmatic integration, see the [API Reference](./api-reference.md#typescript-sdk) and [API Reference](./api-reference.md).
+This CLI reference provides comprehensive documentation for all Fogo Stake Pool operations. For programmatic integration, see the [API Reference](./api-reference.md#typescript-sdk) and [API Reference](./api-reference.md).
