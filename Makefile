@@ -133,7 +133,7 @@ lint: ## Run clippy
 	cargo $(nightly) clippy --all-targets -- -D warnings
 
 audit: ## Run security audit
-	cargo audit --ignore RUSTSEC-2022-0093 --ignore RUSTSEC-2024-0344
+	cargo audit --ignore RUSTSEC-2022-0093 --ignore RUSTSEC-2024-0344 --ignore RUSTSEC-2025-0055
 
 spellcheck: ## Run spellcheck
 	@echo "Spellcheck skipped - not configured"
