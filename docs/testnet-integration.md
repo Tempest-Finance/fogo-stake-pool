@@ -1,4 +1,4 @@
-# Fogo Stake Pool - FOGO Testnet
+# Fogo Stake Pool - Ignition Testnet
 
 ## Addresses
 
@@ -13,11 +13,15 @@
 ## Fees
 
 ```
-Epoch Fee: 7/100 of epoch rewards
-Stake Withdrawal Fee: 243/64000 of withdrawal amount
-SOL Withdrawal Fee: 81/16000 of withdrawal amount
+Stake Pool Info
+===============
+Epoch Fee: 49/1000 of epoch rewards
+Stake Withdrawal Fee: 15/10000 of withdrawal amount
+SOL Withdrawal Fee: 225/10000 of withdrawal amount
 Stake Deposit Fee: 0/0 of deposit amount
 SOL Deposit Fee: 0/0 of deposit amount
+Stake Deposit Referral Fee: 0% of Stake Deposit Fee
+SOL Deposit Referral Fee: 0% of SOL Deposit Fee
 ```
 
 ## SDK integration
