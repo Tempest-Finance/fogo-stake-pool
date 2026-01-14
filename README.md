@@ -1,16 +1,47 @@
-# Ignition stake-pool program (Fogo blockchain)
+# Fogo Stake Pool
 
----
+A liquid staking protocol for the FOGO blockchain, forked from [SPL Stake Pool](https://github.com/solana-program/stake-pool).
 
-Full documentation is available at https://spl.solana.com/stake-pool
+## Program IDs
 
-Typescript bindings are available in the `./packages/sdk` directory.
+| Network | Address |
+|---------|---------|
+| Mainnet | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
+| Testnet | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
 
-The command-line interface tool is available in the `./clients/cli` directory.
+## Quick Start
 
-Python bindings are available in the `./clients/py` directory.
+```bash
+# Build the program
+make build
+
+# Run tests
+make test
+
+# See all commands
+make help
+```
+
+## Components
+
+| Directory | Description |
+|-----------|-------------|
+| `program/` | On-chain Solana BPF program (Rust) |
+| `clients/cli/` | Command-line interface |
+| `clients/js/` | TypeScript SDK (`@ignitionfi/fogo-stake-pool`) |
+| `clients/py/` | Python client library |
+
+## Documentation
+
+- [Getting Started](./docs/getting-started.md)
+- [API Reference](./docs/api-reference.md)
+- [Program Guide](./docs/program-guide.md)
+- [Testnet Integration](./docs/testnet-integration.md)
 
 ## Audit
 
-The repository [README](https://github.com/solana-labs/solana-program-library#audits)
-contains information about program audits.
+Audit reports are available in the [`audits/`](./audits/) directory.
+
+## License
+
+Apache 2.0
