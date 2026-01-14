@@ -1,6 +1,4 @@
-use crate::helpers::{
-    get_token_balance, program_test, StakePoolAccounts, TEST_STAKE_AMOUNT,
-};
+use crate::helpers::{get_token_balance, program_test, StakePoolAccounts, TEST_STAKE_AMOUNT};
 use fogo_sessions_sdk::session::{MAJOR, SESSION_MANAGER_ID};
 use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
 use solana_program::clock::Clock;
@@ -85,12 +83,13 @@ pub async fn setup_with_session_account_no_ata(
         &token_program_id,
     );
 
-    let create_payer_ata_ix = spl_associated_token_account::instruction::create_associated_token_account(
-        &context.payer.pubkey(),
-        &context.payer.pubkey(),
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &token_program_id,
-    );
+    let create_payer_ata_ix =
+        spl_associated_token_account::instruction::create_associated_token_account(
+            &context.payer.pubkey(),
+            &context.payer.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &token_program_id,
+        );
 
     let create_ata_tx = Transaction::new_signed_with_payer(
         &[create_payer_ata_ix],
@@ -222,8 +221,7 @@ pub async fn setup_with_session_account(
         .await;
     assert!(error.is_none(), "{:?}", error);
 
-    let pool_tokens =
-        get_token_balance(&mut context.banks_client, &pool_token_ata).await;
+    let pool_tokens = get_token_balance(&mut context.banks_client, &pool_token_ata).await;
 
     (
         context,

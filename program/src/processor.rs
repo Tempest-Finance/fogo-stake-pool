@@ -2799,9 +2799,7 @@ impl Processor {
         )?;
 
         // Refund transient wSOL rent to payer
-        let rent_lamports = rent
-            .minimum_balance(spl_token::state::Account::LEN)
-            .max(1);
+        let rent_lamports = rent.minimum_balance(spl_token::state::Account::LEN).max(1);
 
         invoke_signed(
             &system_instruction::transfer(program_signer_info.key, payer_info.key, rent_lamports),
@@ -2814,11 +2812,12 @@ impl Processor {
         )?;
 
         // Verify dest_user_pool_info is the correct ATA for user_wallet
-        let expected_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
-            user_wallet_info.key,
-            pool_mint_info.key,
-            token_program_info.key,
-        );
+        let expected_ata =
+            spl_associated_token_account::get_associated_token_address_with_program_id(
+                user_wallet_info.key,
+                pool_mint_info.key,
+                token_program_info.key,
+            );
         if *dest_user_pool_info.key != expected_ata {
             msg!("dest_user_pool is not the ATA for user_wallet");
             return Err(ProgramError::InvalidAccountData);
@@ -3319,7 +3318,8 @@ impl Processor {
                 // NOTE: Session-based withdrawals cannot be used for validator removal
                 // because the split amount is reduced by stake rent (funded by payer),
                 // which would leave residual lamports in the validator stake account.
-                if let Some((_, StakeWithdrawSource::ValidatorRemoval)) = &validator_list_item_info {
+                if let Some((_, StakeWithdrawSource::ValidatorRemoval)) = &validator_list_item_info
+                {
                     msg!("Validator removal is not supported via session-based withdrawal");
                     return Err(StakePoolError::InvalidState.into());
                 }
@@ -3343,8 +3343,10 @@ impl Processor {
                 }
 
                 let signer_or_session_info = user_stake_authority_info;
-                let user_pubkey =
-                    Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
+                let user_pubkey = Session::extract_user_from_signer_or_session(
+                    signer_or_session_info,
+                    program_id,
+                )?;
 
                 // Validate stake account PDA
                 let (expected_stake_pda, stake_pda_bump) = Pubkey::find_program_address(
@@ -3394,11 +3396,7 @@ impl Processor {
                     &[stake_pda_bump],
                 ];
 
-                create_stake_account(
-                    stake_split_to.clone(),
-                    stake_pda_seeds,
-                    stake_space,
-                )?;
+                create_stake_account(stake_split_to.clone(), stake_pda_seeds, stake_space)?;
 
                 // Fund the PDA with only the missing rent from payer
                 if required_rent > 0 {
@@ -3420,16 +3418,25 @@ impl Processor {
                 let split_lamports = withdraw_lamports.saturating_sub(stake_rent);
                 let is_user_payer = *payer_info.key == user_pubkey;
 
-                Some((user_pubkey, is_user_payer, program_signer_bump, program_signer_info.clone(), signer_or_session_info.clone(), split_lamports, required_rent))
+                Some((
+                    user_pubkey,
+                    is_user_payer,
+                    program_signer_bump,
+                    program_signer_info.clone(),
+                    signer_or_session_info.clone(),
+                    split_lamports,
+                    required_rent,
+                ))
             } else {
                 None
             };
 
-        let actual_split_amount = if let Some((_, _, _, _, _, split_lamports, _)) = &session_pda_info {
-            *split_lamports
-        } else {
-            withdraw_lamports
-        };
+        let actual_split_amount =
+            if let Some((_, _, _, _, _, split_lamports, _)) = &session_pda_info {
+                *split_lamports
+            } else {
+                withdraw_lamports
+            };
 
         Self::stake_split(
             stake_pool_info.key,
@@ -3442,7 +3449,16 @@ impl Processor {
         )?;
 
         // WithdrawStakeWithSession path - use session for token ops, set PDA as its own authority
-        if let Some((user_pubkey, is_user_payer, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports, required_rent)) = session_pda_info {
+        if let Some((
+            user_pubkey,
+            is_user_payer,
+            program_signer_bump,
+            program_signer_info,
+            signer_or_session_info,
+            split_lamports,
+            required_rent,
+        )) = session_pda_info
+        {
             use fogo_sessions_sdk::token::instruction::{burn, transfer_checked};
             use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
             use solana_program::program_pack::Pack;
@@ -3457,9 +3473,9 @@ impl Processor {
 
             let pool_tokens_burnt = stake_pool
                 .calc_pool_tokens_for_deposit(if is_user_payer {
-                  split_lamports
+                    split_lamports
                 } else {
-                  split_lamports.saturating_add(required_rent)
+                    split_lamports.saturating_add(required_rent)
                 })
                 .ok_or(StakePoolError::CalculationFailure)?;
 
@@ -3712,11 +3728,12 @@ impl Processor {
         let rent = Rent::get()?;
 
         // Verify destination_account_info is the correct wSOL ATA for user_wallet
-        let expected_ata = spl_associated_token_account::get_associated_token_address_with_program_id(
-            user_wallet_info.key,
-            wsol_mint_info.key,
-            token_program_info.key,
-        );
+        let expected_ata =
+            spl_associated_token_account::get_associated_token_address_with_program_id(
+                user_wallet_info.key,
+                wsol_mint_info.key,
+                token_program_info.key,
+            );
         if *destination_account_info.key != expected_ata {
             msg!("destination_account is not the wSOL ATA for user_wallet");
             return Err(ProgramError::InvalidAccountData);
@@ -3753,7 +3770,9 @@ impl Processor {
 
             let balance_before = program_signer_info.lamports();
             Self::process_withdraw_sol(program_id, &accounts, pool_tokens, minimum_lamports_out)?;
-            program_signer_info.lamports().saturating_sub(balance_before)
+            program_signer_info
+                .lamports()
+                .saturating_sub(balance_before)
         };
 
         if ata_creation_cost > 0 {

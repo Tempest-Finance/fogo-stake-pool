@@ -3,7 +3,9 @@
 
 mod helpers;
 
-use crate::helpers::wsol::{setup_with_session_account, setup_with_session_account_no_ata, TRANSIENT_WSOL_SEED};
+use crate::helpers::wsol::{
+    setup_with_session_account, setup_with_session_account_no_ata, TRANSIENT_WSOL_SEED,
+};
 use spl_stake_pool::instruction::deposit_wsol_with_session;
 use {
     fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED,
@@ -903,12 +905,14 @@ async fn success_different_payer_from_fee_payer(token_program_id: Pubkey) {
     context
         .banks_client
         .process_transaction(Transaction::new_signed_with_payer(
-            &[spl_associated_token_account::instruction::create_associated_token_account(
-                &context.payer.pubkey(),
-                &user.pubkey(),
-                &native_mint::id(),
-                &spl_token::id(),
-            )],
+            &[
+                spl_associated_token_account::instruction::create_associated_token_account(
+                    &context.payer.pubkey(),
+                    &user.pubkey(),
+                    &native_mint::id(),
+                    &spl_token::id(),
+                ),
+            ],
             Some(&context.payer.pubkey()),
             &[&context.payer],
             context.last_blockhash,
@@ -1030,12 +1034,14 @@ async fn success_onchain_ata_creation(token_program_id: Pubkey) {
     context
         .banks_client
         .process_transaction(Transaction::new_signed_with_payer(
-            &[spl_associated_token_account::instruction::create_associated_token_account(
-                &context.payer.pubkey(),
-                &user.pubkey(),
-                &native_mint::id(),
-                &spl_token::id(),
-            )],
+            &[
+                spl_associated_token_account::instruction::create_associated_token_account(
+                    &context.payer.pubkey(),
+                    &user.pubkey(),
+                    &native_mint::id(),
+                    &spl_token::id(),
+                ),
+            ],
             Some(&context.payer.pubkey()),
             &[&context.payer],
             context.last_blockhash,
@@ -1191,12 +1197,14 @@ async fn fail_deposit_less_than_ata_rent(token_program_id: Pubkey) {
     context
         .banks_client
         .process_transaction(Transaction::new_signed_with_payer(
-            &[spl_associated_token_account::instruction::create_associated_token_account(
-                &context.payer.pubkey(),
-                &user.pubkey(),
-                &native_mint::id(),
-                &spl_token::id(),
-            )],
+            &[
+                spl_associated_token_account::instruction::create_associated_token_account(
+                    &context.payer.pubkey(),
+                    &user.pubkey(),
+                    &native_mint::id(),
+                    &spl_token::id(),
+                ),
+            ],
             Some(&context.payer.pubkey()),
             &[&context.payer],
             context.last_blockhash,
@@ -1328,12 +1336,14 @@ async fn success_deposit_slightly_more_than_ata_rent(token_program_id: Pubkey) {
     context
         .banks_client
         .process_transaction(Transaction::new_signed_with_payer(
-            &[spl_associated_token_account::instruction::create_associated_token_account(
-                &context.payer.pubkey(),
-                &user.pubkey(),
-                &native_mint::id(),
-                &spl_token::id(),
-            )],
+            &[
+                spl_associated_token_account::instruction::create_associated_token_account(
+                    &context.payer.pubkey(),
+                    &user.pubkey(),
+                    &native_mint::id(),
+                    &spl_token::id(),
+                ),
+            ],
             Some(&context.payer.pubkey()),
             &[&context.payer],
             context.last_blockhash,

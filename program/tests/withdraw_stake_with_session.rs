@@ -4,9 +4,12 @@
 mod helpers;
 
 use {
+    fogo_sessions_sdk::session::SESSION_MANAGER_ID,
     fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED,
     helpers::{wsol::manually_serialize_session, *},
-    solana_program::{instruction::InstructionError, program_pack::Pack, stake::state::StakeStateV2},
+    solana_program::{
+        instruction::InstructionError, program_pack::Pack, stake::state::StakeStateV2,
+    },
     solana_program_test::*,
     solana_sdk::{
         account::Account,
@@ -21,7 +24,6 @@ use {
         instruction::{withdraw_from_stake_account_with_session, withdraw_stake_with_session},
         MINIMUM_RESERVE_LAMPORTS,
     },
-    fogo_sessions_sdk::session::SESSION_MANAGER_ID,
     test_case::test_case,
 };
 
@@ -31,10 +33,10 @@ async fn setup_withdraw_stake_with_session(
 ) -> (
     ProgramTestContext,
     StakePoolAccounts,
-    Keypair,           // user
-    Pubkey,            // pool_token_ata
-    Keypair,           // session_keypair
-    u64,               // pool_tokens
+    Keypair,               // user
+    Pubkey,                // pool_token_ata
+    Keypair,               // session_keypair
+    u64,                   // pool_tokens
     ValidatorStakeAccount, // validator
 ) {
     let mut context = program_test().start_with_context().await;
@@ -219,7 +221,8 @@ async fn success_withdraw_stake_with_session(token_program_id: Pubkey) {
 
     // Derive PDAs
     let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
-    let (user_stake_pda, _) = find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
+    let (user_stake_pda, _) =
+        find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
 
     // Create the withdraw stake with session instruction
     let instruction = withdraw_stake_with_session(
@@ -257,7 +260,10 @@ async fn success_withdraw_stake_with_session(token_program_id: Pubkey) {
         .get_account(user_stake_pda)
         .await
         .unwrap();
-    assert!(user_stake_account.is_some(), "User stake account should exist");
+    assert!(
+        user_stake_account.is_some(),
+        "User stake account should exist"
+    );
 
     let user_stake_account = user_stake_account.unwrap();
     assert_eq!(
@@ -274,13 +280,11 @@ async fn success_withdraw_stake_with_session(token_program_id: Pubkey) {
         StakeStateV2::Stake(meta, stake, _) => {
             // Verify authority is the user stake PDA itself (so it can self-sign the later withdrawal)
             assert_eq!(
-                meta.authorized.staker,
-                user_stake_pda,
+                meta.authorized.staker, user_stake_pda,
                 "Staker should be user stake PDA"
             );
             assert_eq!(
-                meta.authorized.withdrawer,
-                user_stake_pda,
+                meta.authorized.withdrawer, user_stake_pda,
                 "Withdrawer should be user stake PDA"
             );
             // Verify stake is deactivating (deactivation_epoch != u64::MAX)
@@ -328,7 +332,8 @@ async fn success_withdraw_from_stake_account_with_session(token_program_id: Pubk
 
     // Derive PDAs
     let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
-    let (user_stake_pda, _) = find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
+    let (user_stake_pda, _) =
+        find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
 
     // First, do WithdrawStakeWithSession
     let withdraw_stake_ix = withdraw_stake_with_session(
@@ -365,7 +370,10 @@ async fn success_withdraw_from_stake_account_with_session(token_program_id: Pubk
 
     // Verify the user stake account exists and has correct state
     let stake_account = get_account(&mut context.banks_client, &user_stake_pda).await;
-    assert!(stake_account.lamports > 0, "User stake account should have lamports");
+    assert!(
+        stake_account.lamports > 0,
+        "User stake account should have lamports"
+    );
     assert_eq!(
         stake_account.owner,
         solana_stake_interface::program::id(),
@@ -380,13 +388,11 @@ async fn success_withdraw_from_stake_account_with_session(token_program_id: Pubk
         StakeStateV2::Stake(meta, stake, _) => {
             // Verify authority is the user stake PDA itself (so it can self-sign the later withdrawal)
             assert_eq!(
-                meta.authorized.staker,
-                user_stake_pda,
+                meta.authorized.staker, user_stake_pda,
                 "Staker should be user stake PDA"
             );
             assert_eq!(
-                meta.authorized.withdrawer,
-                user_stake_pda,
+                meta.authorized.withdrawer, user_stake_pda,
                 "Withdrawer should be user stake PDA"
             );
             // Verify stake is deactivating (deactivation_epoch != u64::MAX)
@@ -401,11 +407,7 @@ async fn success_withdraw_from_stake_account_with_session(token_program_id: Pubk
 
     // Try to call WithdrawFromStakeAccountWithSession
     // It should fail because stake hasn't completed cooldown (same epoch)
-    context.last_blockhash = context
-        .banks_client
-        .get_latest_blockhash()
-        .await
-        .unwrap();
+    context.last_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
 
     let stake_lamports = stake_account.lamports;
 
@@ -427,7 +429,10 @@ async fn success_withdraw_from_stake_account_with_session(token_program_id: Pubk
 
     // This will fail because stake hasn't completed cooldown (still in same epoch)
     let result = context.banks_client.process_transaction(transaction).await;
-    assert!(result.is_err(), "Should fail - stake not yet fully deactivated");
+    assert!(
+        result.is_err(),
+        "Should fail - stake not yet fully deactivated"
+    );
 
     // Verify the error is UserStakeNotActive
     let err = result.unwrap_err().unwrap();
@@ -468,7 +473,8 @@ async fn fail_withdraw_from_wrong_user_stake_account(token_program_id: Pubkey) {
 
     // Derive PDAs
     let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
-    let (user_stake_pda, _) = find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
+    let (user_stake_pda, _) =
+        find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
 
     // First, do WithdrawStakeWithSession to create the stake account
     let withdraw_stake_ix = withdraw_stake_with_session(
@@ -507,11 +513,7 @@ async fn fail_withdraw_from_wrong_user_stake_account(token_program_id: Pubkey) {
     let wrong_seed: u64 = 999;
     let (wrong_stake_pda, _) = find_user_stake_program_address(&id(), &user.pubkey(), wrong_seed);
 
-    context.last_blockhash = context
-        .banks_client
-        .get_latest_blockhash()
-        .await
-        .unwrap();
+    context.last_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
 
     let withdraw_from_stake_ix = withdraw_from_stake_account_with_session(
         &id(),
@@ -551,7 +553,8 @@ async fn fail_withdraw_to_different_user_wallet(token_program_id: Pubkey) {
 
     // Derive PDAs
     let (program_signer, _) = Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], &id());
-    let (user_stake_pda, _) = find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
+    let (user_stake_pda, _) =
+        find_user_stake_program_address(&id(), &user.pubkey(), user_stake_seed);
 
     // First, do WithdrawStakeWithSession
     let withdraw_stake_ix = withdraw_stake_with_session(
@@ -586,11 +589,7 @@ async fn fail_withdraw_to_different_user_wallet(token_program_id: Pubkey) {
         .await
         .unwrap();
 
-    context.last_blockhash = context
-        .banks_client
-        .get_latest_blockhash()
-        .await
-        .unwrap();
+    context.last_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
 
     // Try to withdraw to a different wallet (attacker)
     let attacker = Keypair::new();
@@ -612,5 +611,8 @@ async fn fail_withdraw_to_different_user_wallet(token_program_id: Pubkey) {
     );
 
     let result = context.banks_client.process_transaction(transaction).await;
-    assert!(result.is_err(), "Should fail when wallet doesn't match session user");
+    assert!(
+        result.is_err(),
+        "Should fail when wallet doesn't match session user"
+    );
 }

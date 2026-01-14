@@ -2790,7 +2790,10 @@ pub fn deposit_wsol_with_session(
         accounts.push(AccountMeta::new_readonly(*sol_deposit_authority, true));
     }
 
-    accounts.push(AccountMeta::new_readonly(spl_associated_token_account::id(), false));
+    accounts.push(AccountMeta::new_readonly(
+        spl_associated_token_account::id(),
+        false,
+    ));
 
     let data = borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession {
         lamports_in,
@@ -2848,7 +2851,10 @@ pub fn withdraw_wsol_with_session(
     }
 
     // Associated Token Program must be last - only needed in transaction for CPI routing
-    accounts.push(AccountMeta::new_readonly(spl_associated_token_account::id(), false));
+    accounts.push(AccountMeta::new_readonly(
+        spl_associated_token_account::id(),
+        false,
+    ));
 
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession {
         pool_tokens_in,
@@ -2888,7 +2894,7 @@ pub fn withdraw_stake_with_session(
         AccountMeta::new_readonly(*withdraw_authority, false),
         AccountMeta::new(*stake_to_split, false),
         AccountMeta::new(*stake_to_receive, false),
-        AccountMeta::new_readonly(*session_signer, true),  // user_stake_authority (signer_or_session)
+        AccountMeta::new_readonly(*session_signer, true), // user_stake_authority (signer_or_session)
         AccountMeta::new_readonly(*session_signer, false), // user_transfer_authority (not used in session path)
         AccountMeta::new(*burn_from_pool, false),
         AccountMeta::new(*manager_fee_account, false),
