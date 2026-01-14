@@ -28,15 +28,15 @@ fn process_instruction(
 
 security_txt! {
     // Required fields
-    name: "SPL Stake Pool",
-    project_url: "https://spl.solana.com/stake-pool",
-    contacts: "link:https://github.com/solana-labs/solana-program-library/security/advisories/new,mailto:security@solana.com,discord:https://solana.com/discord",
-    policy: "https://github.com/solana-labs/solana-program-library/blob/master/SECURITY.md",
+    name: "Fogo Stake Pool",
+    project_url: "https://github.com/Tempest-Finance/fogo-stake-pool",
+    contacts: "link:https://github.com/Tempest-Finance/fogo-stake-pool/security/advisories/new",
+    policy: "https://github.com/Tempest-Finance/fogo-stake-pool/blob/main/SECURITY.md",
 
     // Optional Fields
     preferred_languages: "en",
-    source_code: "https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program",
-    source_revision: "b7dd8fee93815b486fce98d3d43d1d0934980226",
-    source_release: "stake-pool-v1.0.0",
-    auditors: "https://github.com/solana-labs/security-audits#stake-pool"
+    source_code: "https://github.com/Tempest-Finance/fogo-stake-pool/tree/main/program",
+    source_revision: "e5a3dbec2549cf62b90b674fdedcfa94300ddbb1",
+    source_release: "stake-pool-v2.0.3",
+    auditors: "https://github.com/Tempest-Finance/fogo-stake-pool/tree/main/audits,https://github.com/solana-labs/security-audits#stake-pool"
 }
