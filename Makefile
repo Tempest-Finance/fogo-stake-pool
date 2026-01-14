@@ -86,6 +86,9 @@ clippy-%:
 test-%:
 	RUSTFLAGS="--allow=unexpected_cfgs" SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p $*
 
+build-doc-%:
+	cargo doc -p $* --no-deps
+
 # No-op targets for unused CI features
 generate-clients:
 	@echo "Client generation not used - SDK is manually maintained"
