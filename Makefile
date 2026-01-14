@@ -11,7 +11,7 @@ SOLANA_CLI_VERSION := 2.3.4
 
 nightly := +$(RUST_TOOLCHAIN_NIGHTLY)
 
-CLUSTER ?= testnet
+CLUSTER ?= mainnet
 RPC_localnet := http://localhost:8899
 RPC_testnet  := https://testnet.fogo.io
 RPC_mainnet  := https://mainnet.fogo.io
