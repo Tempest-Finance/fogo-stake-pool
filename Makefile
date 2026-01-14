@@ -93,6 +93,9 @@ build-doc-%:
 generate-clients:
 	@echo "Client generation not used - SDK is manually maintained"
 
+powerset-%:
+	@echo "Powerset testing not configured for $*"
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Build
 # ══════════════════════════════════════════════════════════════════════════════
