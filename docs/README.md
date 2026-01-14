@@ -60,7 +60,7 @@ Python client library for stake pool operations, useful for data analysis and ba
 
 | Component      | Documentation                                      | Source Code                         |
 | -------------- | -------------------------------------------------- | ----------------------------------- |
-| FOGO Program   | [Program Guide](./program-guide.md)                | [`program/`](../program/)           |
+| Stake Pool Program | [Program Guide](./program-guide.md)            | [`program/`](../program/)           |
 | CLI Tool       | [CLI Reference](./cli-reference.md)                | [`clients/cli/`](../clients/cli/)   |
 | TypeScript SDK | [API Reference](./api-reference.md#typescript-sdk) | [`clients/js/`](../clients/js/) |
 | Python Client  | [API Reference](./api-reference.md#python-client)  | [`clients/py/`](../clients/py/)     |
