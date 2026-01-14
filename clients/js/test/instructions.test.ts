@@ -459,10 +459,8 @@ describe('stakePoolProgram', () => {
         if (pubKey.equals(stakePoolMock.validatorList)) {
           return mockValidatorList()
         }
-        if (pubKey.equals(CONSTANTS.validatorStakeAccountAddress)) {
-          return mockValidatorsStakeAccount()
-        }
-        return null
+        // Return a valid stake account for any other address (covers derived validator stake accounts)
+        return mockValidatorsStakeAccount()
       })
       connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
         if (pubKey.equals(stakeReceiver)) {
