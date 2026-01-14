@@ -9,7 +9,7 @@ on:
 env:
   JS_PACKAGES: "['clients-js']"
   PY_PACKAGES: "['clients-py']"
-  SBPF_PROGRAM_PACKAGES: "['spl-stake-pool']"
+  SBPF_PROGRAM_PACKAGES: "['program']"
   RUST_PACKAGES: "['spl-stake-pool', 'fogo-stake-pool-cli']"
 
 jobs:
