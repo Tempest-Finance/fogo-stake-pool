@@ -28,6 +28,7 @@ spl-stake-pool = { version = "=2.0.3", path = "../../program", features = ["no-e
 spl-token = { version = "=8.0", features = ["no-entrypoint",] }
 spl-token-2022 = { version = "=8.0", features = ["no-entrypoint",] }
 bincode = "1.3.1"
+bs58 = "0.5"
 
 [[bin]]
 name = "fogo-stake-pool"

@@ -38,6 +38,7 @@ use {
         message::Message,
         native_token::{self, Sol},
         signature::{Keypair, Signer},
+        signer::null_signer::NullSigner,
         signers::Signers,
         transaction::Transaction,
     },
@@ -70,6 +71,8 @@ pub(crate) struct Config {
     token_owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
+    sign_only: bool,
+    multisig_signers: Vec<NullSigner>,
     no_update: bool,
     compute_unit_price: Option<u64>,
     compute_unit_limit: ComputeUnitLimit,
@@ -205,7 +208,11 @@ fn send_transaction_no_wait(
     config: &Config,
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
-    if config.dry_run {
+    if config.sign_only {
+        let serialized = bincode::serialize(&transaction).unwrap();
+        let encoded = bs58::encode(&serialized).into_string();
+        println!("{}", encoded);
+    } else if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
     } else {
@@ -219,7 +226,11 @@ fn send_transaction(
     config: &Config,
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
-    if config.dry_run {
+    if config.sign_only {
+        let serialized = bincode::serialize(&transaction).unwrap();
+        let encoded = bs58::encode(&serialized).into_string();
+        println!("{}", encoded);
+    } else if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
     } else {
@@ -265,10 +276,12 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
         Some(&config.fee_payer.pubkey()),
         &recent_blockhash,
     );
-    check_fee_payer_balance(
-        config,
-        additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
-    )?;
+    if !config.sign_only {
+        check_fee_payer_balance(
+            config,
+            additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
+        )?;
+    }
     let transaction = Transaction::new(signers, message, recent_blockhash);
     Ok(transaction)
 }
@@ -2097,6 +2110,7 @@ fn command_set_manager(
     config: &Config,
     stake_pool_address: &Pubkey,
     new_manager: &Option<Box<dyn Signer>>,
+    new_manager_pubkey: &Option<Pubkey>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
@@ -2104,11 +2118,18 @@ fn command_set_manager(
     }
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
-    // If new accounts are missing in the arguments use the old ones
-    let (new_manager_pubkey, mut signers): (Pubkey, Vec<&dyn Signer>) = match new_manager {
-        None => (stake_pool.manager, vec![]),
-        Some(value) => (value.pubkey(), vec![value.as_ref()]),
-    };
+    // Determine new manager pubkey and signers
+    let (new_manager_pk, mut signers): (Pubkey, Vec<&dyn Signer>) =
+        if let Some(signer) = new_manager {
+            // New manager provided as keypair
+            (signer.pubkey(), vec![signer.as_ref()])
+        } else if let Some(pubkey) = new_manager_pubkey {
+            // New manager provided as pubkey only (for multisig vaults)
+            (*pubkey, vec![])
+        } else {
+            // Keep current manager
+            (stake_pool.manager, vec![])
+        };
 
     let new_fee_receiver = match new_fee_receiver {
         None => stake_pool.manager_fee_account,
@@ -2137,7 +2158,7 @@ fn command_set_manager(
             &config.stake_pool_program_id,
             stake_pool_address,
             &config.manager.pubkey(),
-            &new_manager_pubkey,
+            &new_manager_pk,
             &new_fee_receiver,
         )],
         &signers,
@@ -2201,17 +2222,33 @@ fn command_set_fee(
     stake_pool_address: &Pubkey,
     new_fee: FeeType,
 ) -> CommandResult {
-    if !config.no_update {
+    if !config.no_update && !config.sign_only {
         command_update(config, stake_pool_address, false, false, false)?;
     }
-    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-    unique_signers!(signers);
+
+    // Determine manager pubkey and signer based on mode
+    let (manager_pubkey, signers): (Pubkey, Vec<&dyn Signer>) =
+        if config.sign_only && !config.multisig_signers.is_empty() {
+            // Use first multisig signer as manager for sign-only mode
+            let manager_pubkey = config.multisig_signers[0].pubkey();
+            let mut signers: Vec<&dyn Signer> = vec![config.fee_payer.as_ref()];
+            for signer in &config.multisig_signers {
+                signers.push(signer);
+            }
+            (manager_pubkey, signers)
+        } else {
+            let mut signers: Vec<&dyn Signer> =
+                vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+            unique_signers!(signers);
+            (config.manager.pubkey(), signers)
+        };
+
     let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_fee(
             &config.stake_pool_program_id,
             stake_pool_address,
-            &config.manager.pubkey(),
+            &manager_pubkey,
             new_fee,
         )],
         &signers,
@@ -2278,6 +2315,24 @@ fn main() {
                 .takes_value(false)
                 .global(true)
                 .help("Simulate transaction instead of executing"),
+        )
+        .arg(
+            Arg::with_name("sign_only")
+                .long("sign-only")
+                .takes_value(false)
+                .global(true)
+                .help("Output base58-encoded transaction for multisig import instead of executing"),
+        )
+        .arg(
+            Arg::with_name("multisig_signer")
+                .long("multisig-signer")
+                .value_name("PUBKEY")
+                .validator(is_valid_pubkey)
+                .takes_value(true)
+                .multiple(true)
+                .global(true)
+                .requires("sign_only")
+                .help("Pubkey of a multisig signer (requires --sign-only). Can be specified multiple times."),
         )
         .arg(
             Arg::with_name("no_update")
@@ -2987,7 +3042,17 @@ fn main() {
                     .validator(is_valid_signer)
                     .value_name("KEYPAIR")
                     .takes_value(true)
+                    .conflicts_with("new_manager_pubkey")
                     .help("Keypair for the new stake pool manager."),
+            )
+            .arg(
+                Arg::with_name("new_manager_pubkey")
+                    .long("new-manager-pubkey")
+                    .validator(is_pubkey)
+                    .value_name("PUBKEY")
+                    .takes_value(true)
+                    .conflicts_with("new_manager")
+                    .help("Public key for the new stake pool manager (use for multisig vaults)."),
             )
             .arg(
                 Arg::with_name("new_fee_receiver")
@@ -2999,6 +3064,7 @@ fn main() {
             )
             .group(ArgGroup::with_name("new_accounts")
                 .arg("new_manager")
+                .arg("new_manager_pubkey")
                 .arg("new_fee_receiver")
                 .required(true)
                 .multiple(true)
@@ -3212,6 +3278,15 @@ fn main() {
                 OutputFormat::Display
             });
         let dry_run = matches.is_present("dry_run");
+        let sign_only = matches.is_present("sign_only");
+        let multisig_signers: Vec<NullSigner> = matches
+            .values_of("multisig_signer")
+            .map(|values| {
+                values
+                    .map(|s| NullSigner::new(&s.parse::<Pubkey>().unwrap()))
+                    .collect()
+            })
+            .unwrap_or_default();
         let no_update = matches.is_present("no_update");
         let compute_unit_price = value_t!(matches, COMPUTE_UNIT_PRICE_ARG.name, u64).ok();
         let compute_unit_limit = matches
@@ -3239,6 +3314,8 @@ fn main() {
             token_owner,
             fee_payer,
             dry_run,
+            sign_only,
+            multisig_signers,
             no_update,
             compute_unit_price,
             compute_unit_limit,
@@ -3433,7 +3510,8 @@ fn main() {
         ("set-manager", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
 
-            let new_manager = if arg_matches.value_of("new_manager").is_some() {
+            let (new_manager, new_manager_pubkey) = if arg_matches.value_of("new_manager").is_some()
+            {
                 let signer = get_signer(
                     arg_matches,
                     "new-manager",
@@ -3445,9 +3523,11 @@ fn main() {
                         allow_null_signer: true,
                     },
                 );
-                Some(signer)
+                (Some(signer), None)
+            } else if let Some(pubkey) = pubkey_of(arg_matches, "new_manager_pubkey") {
+                (None, Some(pubkey))
             } else {
-                None
+                (None, None)
             };
 
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
@@ -3455,6 +3535,7 @@ fn main() {
                 &config,
                 &stake_pool_address,
                 &new_manager,
+                &new_manager_pubkey,
                 &new_fee_receiver,
             )
         }

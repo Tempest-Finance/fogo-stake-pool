@@ -1538,6 +1538,7 @@ name = "fogo-stake-pool-cli"
 version = "2.0.1"
 dependencies = [
  "bincode",
+ "bs58",
  "clap",
  "serde",
  "solana-account-decoder",
