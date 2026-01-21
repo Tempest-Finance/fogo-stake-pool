@@ -70,11 +70,13 @@ solana program write-buffer \
 ```
 
 Save the buffer address from output:
+
 ```
 Buffer: BuFfEr111111111111111111111111111111111111
 ```
 
 Verify buffer hash matches local build:
+
 ```bash
 solana-verify get-buffer-hash \
   -u https://mainnet.fogo.io \
@@ -92,14 +94,12 @@ solana program set-buffer-authority \
 
 ### Step 4: Create Upgrade Proposal
 
-1. Open [Squads v3](https://backup.v3.squads.so/)
+1. Open [Squads v3](https://backup.v3.squads.so/#/programs/)
 2. Connect wallet and select your multisig
 3. Go to **Programs** in sidebar
-4. Find `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
-5. Click **Upgrade**
-6. Enter the buffer address
-7. Add description with commit hash and changes
-8. Click **Create Transaction**
+4. Enter program ID `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
+5. Enter the buffer address and buffer refund address
+6. Click **Create upgrade**
 
 ### Step 5: Collect Approvals
 
@@ -143,10 +143,7 @@ For stake pool operations that require multisig approval (like fee changes), the
 To transfer the stake pool manager authority to a Squads multisig vault:
 
 ```bash
-fogo-stake-pool set-manager \
-  <POOL_ADDRESS> \
-  --new-manager-pubkey <SQUADS_VAULT_ADDRESS> \
-  --url https://mainnet.fogo.io
+fogo-stake-pool set-manager SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --new-manager-pubkey 2GUNgc8kGvJhD3iBYf4fkH9cjofvAbdgxE6iwon8sN6v --url https://mainnet.fogo.io --sign-only
 ```
 
 > **Important**: Once transferred to the multisig, all manager operations will require multisig approval. Ensure you have access to the multisig before transferring.
@@ -178,6 +175,7 @@ This outputs a base58-encoded transaction string. Copy the output and:
 ### Fee Types Reference
 
 Available fee types for `set-fee` command:
+
 - `epoch` - Fee on staking rewards
 - `stake-deposit` - Fee on stake deposits
 - `sol-deposit` - Fee on SOL deposits
@@ -204,11 +202,13 @@ fogo-stake-pool set-fee \
 ### RPC Connection Failed
 
 Ensure Squads is configured with correct Fogo RPC:
+
 - Settings → RPC URL → `https://mainnet.fogo.io`
 
 ### Transaction Simulation Failed
 
 Common causes:
+
 - Incorrect account ordering
 - Missing signer
 - Insufficient funds
@@ -225,6 +225,7 @@ Check transaction details carefully before submitting.
 ### Buffer Authority Transfer Failed
 
 Verify you're the current buffer authority:
+
 ```bash
 solana program show --url https://mainnet.fogo.io --buffers
 ```
@@ -232,6 +233,7 @@ solana program show --url https://mainnet.fogo.io --buffers
 ### Upgrade Execution Failed
 
 Check:
+
 - Sufficient FOGO for fees
 - Buffer account still exists
 - Program is upgradeable (not immutable)
@@ -248,15 +250,15 @@ solana program show \
 
 ### Key Addresses
 
-| Item | Address |
-|------|---------|
-| Program ID | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
-| Squads Vault | `<YOUR_SQUADS_VAULT_ADDRESS>` |
+| Item         | Address                                       |
+| ------------ | --------------------------------------------- |
+| Program ID   | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
+| Squads Vault | `<YOUR_SQUADS_VAULT_ADDRESS>`                 |
 
 ### RPC Endpoints
 
-| Network | URL |
-|---------|-----|
+| Network | URL                       |
+| ------- | ------------------------- |
 | Mainnet | `https://mainnet.fogo.io` |
 | Testnet | `https://testnet.fogo.io` |
 
