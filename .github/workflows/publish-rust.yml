@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      package_path:
+      package-path:
         description: Path to directory with package to release
         required: true
         default: 'interface'
@@ -34,167 +34,50 @@ on:
         description: Version (used with level "version")
         required: false
         type: string
-      dry_run:
+      dry-run:
         description: Dry run
         required: true
         default: true
         type: boolean
-      create_release:
+      create-release:
         description: Create a GitHub release
         required: true
         type: boolean
         default: true
 
-env:
-  RUST_TOOLCHAIN_NIGHTLY: nightly-2025-02-16
-  SOLANA_CLI_VERSION: 2.3.4
-
 jobs:
-  test:
-    name: Test Rust Crate
+  set_env:
+    name: Set variables to be used in strategy definitions
     runs-on: ubuntu-latest
+    outputs:
+      RUST_TOOLCHAIN_NIGHTLY: ${{ steps.compute.outputs.RUST_TOOLCHAIN_NIGHTLY }}
+      SOLANA_CLI_VERSION: ${{ steps.compute.outputs.SOLANA_CLI_VERSION }}
+      TARGET: ${{ steps.compute.outputs.TARGET }}
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN_NIGHTLY }}
-          components: rustfmt, clippy
-
-      - name: Install Solana
-        uses: solana-program/actions/install-solana@v1
-        with:
-          version: ${{ env.SOLANA_CLI_VERSION }}
-
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-publish-${{ inputs.package_path }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: cargo-publish-
-
-      - name: Format Check
-        run: cargo +${{ env.RUST_TOOLCHAIN_NIGHTLY }} fmt --check --manifest-path ${{ inputs.package_path }}/Cargo.toml
-
-      - name: Clippy
+      - name: Compute variables
+        id: compute
+        shell: bash
         run: |
-          RUSTFLAGS="--allow=unexpected_cfgs" cargo +${{ env.RUST_TOOLCHAIN_NIGHTLY }} clippy \
-            --manifest-path ${{ inputs.package_path }}/Cargo.toml --all-targets -- -D warnings
+          echo "RUST_TOOLCHAIN_NIGHTLY=$(make rust-toolchain-nightly)" >> "$GITHUB_OUTPUT"
+          echo "SOLANA_CLI_VERSION=$(make solana-cli-version)" >> "$GITHUB_OUTPUT"
+          TARGET=$(echo ${{ inputs.package-path }} | sed 's#/#-#')
+          echo "TARGET=$TARGET" >> "$GITHUB_OUTPUT"
 
-      - name: Build Program (if needed)
-        if: inputs.package_path == 'program' || inputs.package_path == 'clients/cli'
-        run: |
-          RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf --manifest-path program/Cargo.toml
-
-      - name: Test
-        run: |
-          RUSTFLAGS="--allow=unexpected_cfgs" cargo +${{ env.RUST_TOOLCHAIN_NIGHTLY }} test \
-            --manifest-path ${{ inputs.package_path }}/Cargo.toml
-
-  publish:
-    name: Publish Rust Crate
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-publish-${{ inputs.package_path }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: cargo-publish-
-
-      - name: Install cargo-release
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-release@0.25.18
-
-      - name: Ensure CARGO_REGISTRY_TOKEN is set
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        if: ${{ env.CARGO_REGISTRY_TOKEN == '' }}
-        run: |
-          echo "::error::The CARGO_REGISTRY_TOKEN secret is not set"
-          echo "Go to Settings -> Secrets and variables -> Actions -> New repository secret"
-          exit 1
-
-      - name: Set Git Author
-        run: |
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-
-      - name: Get Package Info
-        id: package
-        run: |
-          PACKAGE_NAME=$(grep -m1 '^name' "${{ inputs.package_path }}/Cargo.toml" | sed 's/.*= *"\([^"]*\)".*/\1/')
-          OLD_VERSION=$(grep -m1 '^version' "${{ inputs.package_path }}/Cargo.toml" | sed 's/.*= *"\([^"]*\)".*/\1/')
-          echo "name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
-          echo "old_version=$OLD_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Publish Crate
-        id: publish
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          if [ "${{ inputs.level }}" == "version" ]; then
-            LEVEL="${{ inputs.version }}"
-          else
-            LEVEL="${{ inputs.level }}"
-          fi
-
-          if [ "${{ inputs.dry_run }}" == "true" ]; then
-            echo "::notice::Dry run mode - not publishing"
-            cargo release $LEVEL \
-              --manifest-path "${{ inputs.package_path }}/Cargo.toml" \
-              --no-confirm \
-              --allow-dirty
-          else
-            cargo release $LEVEL \
-              --manifest-path "${{ inputs.package_path }}/Cargo.toml" \
-              --no-confirm \
-              --allow-dirty \
-              --execute
-          fi
-
-          # Get new version after release
-          NEW_VERSION=$(grep -m1 '^version' "${{ inputs.package_path }}/Cargo.toml" | sed 's/.*= *"\([^"]*\)".*/\1/')
-          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "new_tag=${{ steps.package.outputs.name }}-v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        if: inputs.create_release && inputs.dry_run == false
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ steps.publish.outputs.new_tag }}
-          name: ${{ steps.package.outputs.name }} v${{ steps.publish.outputs.new_version }}
-          body: |
-            ## ${{ steps.package.outputs.name }} v${{ steps.publish.outputs.new_version }}
-
-            Published to [crates.io](https://crates.io/crates/${{ steps.package.outputs.name }})
-
-            ### Installation
-            ```toml
-            [dependencies]
-            ${{ steps.package.outputs.name }} = "${{ steps.publish.outputs.new_version }}"
-            ```
-          generateReleaseNotes: true
+  main:
+    needs: set_env
+    uses: solana-program/actions/.github/workflows/publish-rust.yml@main
+    with:
+      sbpf-program-packages: "program"
+      solana-cli-version: ${{ needs.set_env.outputs.SOLANA_CLI_VERSION }}
+      clippy-toolchain: ${{ needs.set_env.outputs.RUST_TOOLCHAIN_NIGHTLY }}
+      rustfmt-toolchain: ${{ needs.set_env.outputs.RUST_TOOLCHAIN_NIGHTLY }}
+      target: ${{ needs.set_env.outputs.TARGET }}
+      package-path: ${{ inputs.package-path }}
+      level: ${{ inputs.level }}
+      version: ${{ inputs.version }}
+      create-release: ${{ inputs.create-release }}
+      dry-run: ${{ inputs.dry-run }}
+    secrets: inherit
