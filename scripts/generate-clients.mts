@@ -110,6 +110,18 @@ if (fs.existsSync(rustClient)) {
       },
     }),
   )
+
+  // Fix unused import warning in generated mod.rs
+  const modPath = path.join(rustClient, 'src', 'generated', 'mod.rs')
+  if (fs.existsSync(modPath)) {
+    let content = fs.readFileSync(modPath, 'utf-8')
+    content = content.replace(
+      'pub(crate) use programs::*;',
+      '#[allow(unused_imports)]\npub(crate) use programs::*;',
+    )
+    fs.writeFileSync(modPath, content)
+  }
+
   console.log('✓ Generated Rust client')
 }
 
