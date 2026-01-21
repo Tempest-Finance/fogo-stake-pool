@@ -1,0 +1,5 @@
+# release.toml - Configuration for cargo-release
+# https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md
+
+[workspace]
+allow-dirty = ["Cargo.lock"]

@@ -106,10 +106,10 @@ git-tag-rust-%:
 	@echo "$(call tag-name,$*)@v$(call crate-version,$*)"
 
 publish-rust-%:
-	cd "$(call make-path,$*)" && cargo release $(LEVEL) --tag-name "$(call tag-name,$*)@v{{version}}" --execute --no-confirm --dependent-version fix --allow-dirty
+	cd "$(call make-path,$*)" && cargo release $(LEVEL) --tag-name "$(call tag-name,$*)@v{{version}}" --execute --no-confirm --dependent-version fix
 
 publish-rust-dry-run-%:
-	cd "$(call make-path,$*)" && cargo release $(LEVEL) --tag-name "$(call tag-name,$*)@v{{version}}" --allow-dirty
+	cd "$(call make-path,$*)" && cargo release $(LEVEL) --tag-name "$(call tag-name,$*)@v{{version}}"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Build
