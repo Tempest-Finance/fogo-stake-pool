@@ -1,0 +1,31 @@
+[package]
+name = "fogo-stake-pool-client"
+version = "0.1.0"
+description = "Generated Rust client for the Fogo Stake Pool program"
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+license.workspace = true
+readme = "README.md"
+
+[features]
+default = []
+fetch = ["dep:solana-client"]
+serde = ["dep:serde", "dep:serde_with"]
+
+[dependencies]
+borsh = { version = "1.5", features = ["derive"] }
+num-derive = "0.4"
+num-traits = "0.2"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_with = { version = "3.15", optional = true }
+solana-client = { version = "2.2", optional = true }
+solana-account-info = "2.3"
+solana-program = "2.3"
+solana-program-error = "2.2"
+solana-pubkey = "2.4"
+spl-pod = { version = "0.5", features = ["borsh"] }
+thiserror = "2.0"
+
+[lints]
+workspace = true
