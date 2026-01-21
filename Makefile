@@ -89,9 +89,11 @@ test-%:
 build-doc-%:
 	cargo doc -p $* --no-deps
 
-# No-op targets for unused CI features
 generate-clients:
-	@echo "Client generation not used - SDK is manually maintained"
+	pnpm generate:clients $(ARGS)
+
+generate-idl-%:
+	cargo run --manifest-path $(call make-path,$*)/Cargo.toml --features codama --bin generate-idl $(ARGS)
 
 powerset-%:
 	@echo "Powerset testing not configured for $*"

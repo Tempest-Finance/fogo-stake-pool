@@ -1779,13 +1779,12 @@ dependencies = [
  "codama-macros",
  "num-derive",
  "num-traits",
- "num_enum",
  "serde",
  "serde_derive",
  "serde_json",
  "solana-program",
- "solana-sdk",
  "spl-pod",
+ "spl-stake-pool",
  "thiserror 2.0.12",
 ]
 
