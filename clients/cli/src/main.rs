@@ -209,9 +209,11 @@ fn send_transaction_no_wait(
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
     if config.sign_only {
-        let serialized = bincode::serialize(&transaction).unwrap();
-        let encoded = bs58::encode(&serialized).into_string();
-        println!("{}", encoded);
+        // Serialize the message (not the full transaction) for multisig import
+        let message_data = transaction.message.serialize();
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        println!("Base58: {}", bs58::encode(&message_data).into_string());
+        println!("Base64: {}", STANDARD.encode(&message_data));
     } else if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
@@ -227,9 +229,11 @@ fn send_transaction(
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
     if config.sign_only {
-        let serialized = bincode::serialize(&transaction).unwrap();
-        let encoded = bs58::encode(&serialized).into_string();
-        println!("{}", encoded);
+        // Serialize the message (not the full transaction) for multisig import
+        let message_data = transaction.message.serialize();
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        println!("Base58: {}", bs58::encode(&message_data).into_string());
+        println!("Base64: {}", STANDARD.encode(&message_data));
     } else if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
@@ -282,7 +286,14 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
             additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
         )?;
     }
-    let transaction = Transaction::new(signers, message, recent_blockhash);
+    let transaction = if config.sign_only {
+        // For sign-only mode, use partial signing to allow NullSigners
+        let mut transaction = Transaction::new_unsigned(message);
+        transaction.partial_sign(signers, recent_blockhash);
+        transaction
+    } else {
+        Transaction::new(signers, message, recent_blockhash)
+    };
     Ok(transaction)
 }
 
@@ -2113,51 +2124,70 @@ fn command_set_manager(
     new_manager_pubkey: &Option<Pubkey>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
-    if !config.no_update {
+    if !config.no_update && !config.sign_only {
         command_update(config, stake_pool_address, false, false, false)?;
     }
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
-    // Determine new manager pubkey and signers
-    let (new_manager_pk, mut signers): (Pubkey, Vec<&dyn Signer>) =
-        if let Some(signer) = new_manager {
-            // New manager provided as keypair
-            (signer.pubkey(), vec![signer.as_ref()])
-        } else if let Some(pubkey) = new_manager_pubkey {
-            // New manager provided as pubkey only (for multisig vaults)
-            (*pubkey, vec![])
-        } else {
-            // Keep current manager
-            (stake_pool.manager, vec![])
-        };
+    // Determine new manager pubkey (the one being set)
+    let new_manager_pk: Pubkey = if let Some(signer) = new_manager {
+        signer.pubkey()
+    } else if let Some(pubkey) = new_manager_pubkey {
+        *pubkey
+    } else {
+        stake_pool.manager
+    };
 
+    // Determine new fee receiver
     let new_fee_receiver = match new_fee_receiver {
         None => stake_pool.manager_fee_account,
         Some(value) => {
-            // Check for fee receiver being a valid token account and have to same mint as
-            // the stake pool
-            let token_account =
-                get_token_account(&config.rpc_client, value, &stake_pool.pool_mint)?;
-            if token_account.mint != stake_pool.pool_mint {
-                return Err("Fee receiver account belongs to a different mint"
-                    .to_string()
-                    .into());
+            if !config.sign_only {
+                // Check for fee receiver being a valid token account and have to same mint as
+                // the stake pool
+                let token_account =
+                    get_token_account(&config.rpc_client, value, &stake_pool.pool_mint)?;
+                if token_account.mint != stake_pool.pool_mint {
+                    return Err("Fee receiver account belongs to a different mint"
+                        .to_string()
+                        .into());
+                }
             }
             *value
         }
     };
 
-    signers.append(&mut vec![
-        config.fee_payer.as_ref(),
-        config.manager.as_ref(),
-    ]);
-    unique_signers!(signers);
+    // Determine current manager pubkey and signers based on mode
+    let (current_manager_pubkey, signers): (Pubkey, Vec<&dyn Signer>) =
+        if config.sign_only && !config.multisig_signers.is_empty() {
+            // Use first multisig signer as current manager for sign-only mode
+            let manager_pubkey = config.multisig_signers[0].pubkey();
+            let mut signers: Vec<&dyn Signer> = vec![config.fee_payer.as_ref()];
+            for signer in &config.multisig_signers {
+                signers.push(signer);
+            }
+            // Add new manager signer if provided as keypair
+            if let Some(signer) = new_manager {
+                signers.push(signer.as_ref());
+            }
+            (manager_pubkey, signers)
+        } else {
+            let mut signers: Vec<&dyn Signer> =
+                vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+            // Add new manager signer if provided as keypair
+            if let Some(signer) = new_manager {
+                signers.push(signer.as_ref());
+            }
+            unique_signers!(signers);
+            (config.manager.pubkey(), signers)
+        };
+
     let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_manager(
             &config.stake_pool_program_id,
             stake_pool_address,
-            &config.manager.pubkey(),
+            &current_manager_pubkey,
             &new_manager_pk,
             &new_fee_receiver,
         )],
@@ -3042,7 +3072,6 @@ fn main() {
                     .validator(is_valid_signer)
                     .value_name("KEYPAIR")
                     .takes_value(true)
-                    .conflicts_with("new_manager_pubkey")
                     .help("Keypair for the new stake pool manager."),
             )
             .arg(
@@ -3051,7 +3080,6 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("PUBKEY")
                     .takes_value(true)
-                    .conflicts_with("new_manager")
                     .help("Public key for the new stake pool manager (use for multisig vaults)."),
             )
             .arg(
@@ -3062,6 +3090,12 @@ fn main() {
                     .takes_value(true)
                     .help("Public key for the new account to set as the stake pool fee receiver."),
             )
+            // new_manager and new_manager_pubkey are mutually exclusive
+            .group(ArgGroup::with_name("new_manager_choice")
+                .arg("new_manager")
+                .arg("new_manager_pubkey")
+            )
+            // At least one of the options must be provided
             .group(ArgGroup::with_name("new_accounts")
                 .arg("new_manager")
                 .arg("new_manager_pubkey")
