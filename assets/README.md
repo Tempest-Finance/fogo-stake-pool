@@ -10,18 +10,18 @@ Token metadata and assets for Ignition Staked FOGO (iFOGO).
 | `metadata.json`  | Token metadata               |
 | `paymaster.toml` | Fogo paymaster configuration |
 
-## IPFS URLs
+## URLs
 
 **Image:**
 
 ```
-https://tomato-firm-turkey-182.mypinata.cloud/ipfs/bafkreige6nrqie3qooknxjyscgxk6xoleb5ofa2sap3c3hhrrb6azhc76q
+https://raw.githubusercontent.com/Tempest-Finance/fogo-stake-pool/refs/heads/main/assets/ifogo.svg
 ```
 
 **Metadata:**
 
 ```
-https://tomato-firm-turkey-182.mypinata.cloud/ipfs/bafkreihhxpiuh6i5uox4wfiiywos7bw4ptveft4ph5vgytc5fbw3svvwve
+https://raw.githubusercontent.com/Tempest-Finance/fogo-stake-pool/refs/heads/main/assets/metadata.json
 ```
 
 ## Create Token Metadata
@@ -33,7 +33,7 @@ fogo-stake-pool create-token-metadata \
   --stake-pool ign1zuR3YsvLVsEu8WzsyazBA8EVWUxPPHKnhqhoSTB \
   --name "Ignition Staked FOGO" \
   --symbol "iFOGO" \
-  --uri "https://tomato-firm-turkey-182.mypinata.cloud/ipfs/bafkreihhxpiuh6i5uox4wfiiywos7bw4ptveft4ph5vgytc5fbw3svvwve"
+  --uri "https://raw.githubusercontent.com/Tempest-Finance/fogo-stake-pool/refs/heads/main/assets/metadata.json"
 ```
 
 ## Update Token Metadata
@@ -43,7 +43,5 @@ To update on-chain metadata, use the stake pool CLI:
 ```bash
 fogo-stake-pool update-token-metadata \
   --stake-pool ign1zuR3YsvLVsEu8WzsyazBA8EVWUxPPHKnhqhoSTB \
-  --name "Ignition Staked FOGO" \
-  --symbol "iFOGO" \
-  --uri "https://tomato-firm-turkey-182.mypinata.cloud/ipfs/bafkreihhxpiuh6i5uox4wfiiywos7bw4ptveft4ph5vgytc5fbw3svvwve"
+  --uri "https://raw.githubusercontent.com/Tempest-Finance/fogo-stake-pool/refs/heads/main/assets/metadata.json"
 ```
