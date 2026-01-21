@@ -10,6 +10,8 @@ on:
         type: choice
         options:
           - clients/cli
+          - clients/rust
+          - interface
           - program
       level:
         description: Level
