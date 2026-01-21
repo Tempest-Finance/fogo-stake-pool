@@ -90,7 +90,7 @@ test-%:
 	RUSTFLAGS="--allow=unexpected_cfgs" SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
 build-doc-%:
-	cargo doc -p $* --no-deps
+	cargo doc --manifest-path $(call make-path,$*)/Cargo.toml --no-deps $(ARGS)
 
 generate-clients:
 	pnpm generate:clients $(ARGS)
