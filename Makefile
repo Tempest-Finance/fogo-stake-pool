@@ -21,6 +21,10 @@ pattern-dir = $(firstword $(subst -, ,$1))
 find-pattern-dir = $(findstring $(call pattern-dir,$1)-,$1)
 make-path = $(subst $(call find-pattern-dir,$1),$(subst -,/,$(call find-pattern-dir,$1)),$1)
 
+# Publish helpers
+tag-name = $(lastword $(subst /, ,$(call make-path,$1)))
+crate-version = $(subst ",,$(shell toml get $(call make-path,$1)/Cargo.toml package.version))
+
 .DEFAULT_GOAL := help
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -97,6 +101,16 @@ generate-idl-%:
 
 powerset-%:
 	@echo "Powerset testing not configured for $*"
+
+# Rust publish targets (called with path patterns like interface, clients-rust)
+git-tag-rust-%:
+	@echo "$(call tag-name,$*)@v$(call crate-version,$*)"
+
+publish-rust-%:
+	cd "$(call make-path,$*)" && cargo release $(LEVEL) --tag-name "$(call tag-name,$*)@v{{version}}" --execute --no-confirm --dependent-version fix
+
+publish-rust-dry-run-%:
+	cd "$(call make-path,$*)" && cargo release $(LEVEL) --tag-name "$(call tag-name,$*)@v{{version}}"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Build

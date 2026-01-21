@@ -9,11 +9,11 @@ on:
       package-path:
         description: Path to directory with package to release
         required: true
-        default: 'clients/cli'
+        default: 'interface'
         type: choice
         options:
-          - clients/cli
           - clients/rust
+          - clients/cli
           - interface
           - program
       level:
