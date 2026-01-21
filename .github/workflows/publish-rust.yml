@@ -12,9 +12,9 @@ on:
         default: 'interface'
         type: choice
         options:
-          - interface
           - clients/rust
           - clients/cli
+          - interface
           - program
       level:
         description: Level
