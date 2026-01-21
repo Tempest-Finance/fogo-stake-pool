@@ -4,7 +4,7 @@ A stake pool program interface on the Fogo blockchain, usable for liquid staking
 
 This crate provides state types and utilities that integrators can use to deserialize and interact with stake pool accounts.
 
-Full documentation is available at https://github.com/Tempest-Finance/fogo-stake-pool/docs
+Full documentation is available at https://github.com/Tempest-Finance/fogo-stake-pool
 
 ## Usage
 
