@@ -1,0 +1,991 @@
+{
+  "additionalPrograms": [],
+  "kind": "rootNode",
+  "program": {
+    "accounts": [],
+    "definedTypes": [
+      {
+        "kind": "definedTypeNode",
+        "name": "accountType",
+        "type": {
+          "kind": "enumTypeNode",
+          "size": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "variants": [
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "uninitialized"
+            },
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "stakePool"
+            },
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "validatorList"
+            }
+          ]
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "stakePool",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "accountType",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "accountType"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "manager",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "staker",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "stakeDepositAuthority",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "stakeWithdrawBumpSeed",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "validatorList",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "reserveStake",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "poolMint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "managerFeeAccount",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "tokenProgramId",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "totalLamports",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "poolTokenSupply",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "lastUpdateEpoch",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "lockup",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "lockup"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "epochFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "fee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "nextEpochFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "futureEpochFee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "preferredDepositValidatorVoteAddress",
+              "type": {
+                "item": {
+                  "kind": "publicKeyTypeNode"
+                },
+                "kind": "optionTypeNode",
+                "prefix": {
+                  "endian": "le",
+                  "format": "u8",
+                  "kind": "numberTypeNode"
+                }
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "preferredWithdrawValidatorVoteAddress",
+              "type": {
+                "item": {
+                  "kind": "publicKeyTypeNode"
+                },
+                "kind": "optionTypeNode",
+                "prefix": {
+                  "endian": "le",
+                  "format": "u8",
+                  "kind": "numberTypeNode"
+                }
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "stakeDepositFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "fee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "stakeWithdrawalFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "fee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "nextStakeWithdrawalFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "futureEpochFee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "stakeReferralFee",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "solDepositAuthority",
+              "type": {
+                "item": {
+                  "kind": "publicKeyTypeNode"
+                },
+                "kind": "optionTypeNode",
+                "prefix": {
+                  "endian": "le",
+                  "format": "u8",
+                  "kind": "numberTypeNode"
+                }
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "solDepositFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "fee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "solReferralFee",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "solWithdrawAuthority",
+              "type": {
+                "item": {
+                  "kind": "publicKeyTypeNode"
+                },
+                "kind": "optionTypeNode",
+                "prefix": {
+                  "endian": "le",
+                  "format": "u8",
+                  "kind": "numberTypeNode"
+                }
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "solWithdrawalFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "fee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "nextSolWithdrawalFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "futureEpochFee"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "lastEpochPoolTokenSupply",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "lastEpochTotalLamports",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "validatorList",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "header",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "validatorListHeader"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "validators",
+              "type": {
+                "count": {
+                  "kind": "prefixedCountNode",
+                  "prefix": {
+                    "endian": "le",
+                    "format": "u32",
+                    "kind": "numberTypeNode"
+                  }
+                },
+                "item": {
+                  "kind": "definedTypeLinkNode",
+                  "name": "validatorStakeInfo"
+                },
+                "kind": "arrayTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "validatorListHeader",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "accountType",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "accountType"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "maxValidators",
+              "type": {
+                "endian": "le",
+                "format": "u32",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "stakeStatus",
+        "type": {
+          "kind": "enumTypeNode",
+          "size": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "variants": [
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "active"
+            },
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "deactivatingTransient"
+            },
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "readyForRemoval"
+            },
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "deactivatingValidator"
+            },
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "deactivatingAll"
+            }
+          ]
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "podStakeStatus",
+        "type": {
+          "endian": "le",
+          "format": "u8",
+          "kind": "numberTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "validatorStakeInfo",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "activeStakeLamports",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podU64"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "transientStakeLamports",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podU64"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "lastUpdateEpoch",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podU64"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "transientSeedSuffix",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podU64"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "unused",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podU32"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "validatorSeedSuffix",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podU32"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "status",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "podStakeStatus"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "voteAccountAddress",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "futureEpoch",
+        "type": {
+          "kind": "enumTypeNode",
+          "size": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "variants": [
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "none"
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "one",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "t"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "two",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "t"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "futureEpochFee",
+        "type": {
+          "kind": "enumTypeNode",
+          "size": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "variants": [
+            {
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "none"
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "one",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "two",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "fee",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "denominator",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "numerator",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "feeType",
+        "type": {
+          "kind": "enumTypeNode",
+          "size": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "variants": [
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "solReferral",
+              "tuple": {
+                "items": [
+                  {
+                    "endian": "le",
+                    "format": "u8",
+                    "kind": "numberTypeNode"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "stakeReferral",
+              "tuple": {
+                "items": [
+                  {
+                    "endian": "le",
+                    "format": "u8",
+                    "kind": "numberTypeNode"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "epoch",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "stakeWithdrawal",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "solDeposit",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "stakeDeposit",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            },
+            {
+              "kind": "enumTupleVariantTypeNode",
+              "name": "solWithdrawal",
+              "tuple": {
+                "items": [
+                  {
+                    "kind": "definedTypeLinkNode",
+                    "name": "fee"
+                  }
+                ],
+                "kind": "tupleTypeNode"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "errors": [
+      {
+        "code": 0,
+        "kind": "errorNode",
+        "message": "AlreadyInUse",
+        "name": "alreadyInUse"
+      },
+      {
+        "code": 1,
+        "kind": "errorNode",
+        "message": "InvalidProgramAddress",
+        "name": "invalidProgramAddress"
+      },
+      {
+        "code": 2,
+        "kind": "errorNode",
+        "message": "InvalidState",
+        "name": "invalidState"
+      },
+      {
+        "code": 3,
+        "kind": "errorNode",
+        "message": "CalculationFailure",
+        "name": "calculationFailure"
+      },
+      {
+        "code": 4,
+        "kind": "errorNode",
+        "message": "FeeTooHigh",
+        "name": "feeTooHigh"
+      },
+      {
+        "code": 5,
+        "kind": "errorNode",
+        "message": "WrongAccountMint",
+        "name": "wrongAccountMint"
+      },
+      {
+        "code": 6,
+        "kind": "errorNode",
+        "message": "WrongManager",
+        "name": "wrongManager"
+      },
+      {
+        "code": 7,
+        "kind": "errorNode",
+        "message": "SignatureMissing",
+        "name": "signatureMissing"
+      },
+      {
+        "code": 8,
+        "kind": "errorNode",
+        "message": "InvalidValidatorStakeList",
+        "name": "invalidValidatorStakeList"
+      },
+      {
+        "code": 9,
+        "kind": "errorNode",
+        "message": "InvalidFeeAccount",
+        "name": "invalidFeeAccount"
+      },
+      {
+        "code": 10,
+        "kind": "errorNode",
+        "message": "WrongPoolMint",
+        "name": "wrongPoolMint"
+      },
+      {
+        "code": 11,
+        "kind": "errorNode",
+        "message": "WrongStakeStake",
+        "name": "wrongStakeStake"
+      },
+      {
+        "code": 12,
+        "kind": "errorNode",
+        "message": "UserStakeNotActive",
+        "name": "userStakeNotActive"
+      },
+      {
+        "code": 13,
+        "kind": "errorNode",
+        "message": "ValidatorAlreadyAdded",
+        "name": "validatorAlreadyAdded"
+      },
+      {
+        "code": 14,
+        "kind": "errorNode",
+        "message": "ValidatorNotFound",
+        "name": "validatorNotFound"
+      },
+      {
+        "code": 15,
+        "kind": "errorNode",
+        "message": "InvalidStakeAccountAddress",
+        "name": "invalidStakeAccountAddress"
+      },
+      {
+        "code": 16,
+        "kind": "errorNode",
+        "message": "StakeListOutOfDate",
+        "name": "stakeListOutOfDate"
+      },
+      {
+        "code": 17,
+        "kind": "errorNode",
+        "message": "StakeListAndPoolOutOfDate",
+        "name": "stakeListAndPoolOutOfDate"
+      },
+      {
+        "code": 18,
+        "kind": "errorNode",
+        "message": "UnknownValidatorStakeAccount",
+        "name": "unknownValidatorStakeAccount"
+      },
+      {
+        "code": 19,
+        "kind": "errorNode",
+        "message": "WrongMintingAuthority",
+        "name": "wrongMintingAuthority"
+      },
+      {
+        "code": 20,
+        "kind": "errorNode",
+        "message": "UnexpectedValidatorListAccountSize",
+        "name": "unexpectedValidatorListAccountSize"
+      },
+      {
+        "code": 21,
+        "kind": "errorNode",
+        "message": "WrongStaker",
+        "name": "wrongStaker"
+      },
+      {
+        "code": 22,
+        "kind": "errorNode",
+        "message": "NonZeroPoolTokenSupply",
+        "name": "nonZeroPoolTokenSupply"
+      },
+      {
+        "code": 23,
+        "kind": "errorNode",
+        "message": "StakeLamportsNotEqualToMinimum",
+        "name": "stakeLamportsNotEqualToMinimum"
+      },
+      {
+        "code": 24,
+        "kind": "errorNode",
+        "message": "IncorrectDepositVoteAddress",
+        "name": "incorrectDepositVoteAddress"
+      },
+      {
+        "code": 25,
+        "kind": "errorNode",
+        "message": "IncorrectWithdrawVoteAddress",
+        "name": "incorrectWithdrawVoteAddress"
+      },
+      {
+        "code": 26,
+        "kind": "errorNode",
+        "message": "InvalidMintFreezeAuthority",
+        "name": "invalidMintFreezeAuthority"
+      },
+      {
+        "code": 27,
+        "kind": "errorNode",
+        "message": "FeeIncreaseTooHigh",
+        "name": "feeIncreaseTooHigh"
+      },
+      {
+        "code": 28,
+        "kind": "errorNode",
+        "message": "WithdrawalTooSmall",
+        "name": "withdrawalTooSmall"
+      },
+      {
+        "code": 29,
+        "kind": "errorNode",
+        "message": "DepositTooSmall",
+        "name": "depositTooSmall"
+      },
+      {
+        "code": 30,
+        "kind": "errorNode",
+        "message": "InvalidStakeDepositAuthority",
+        "name": "invalidStakeDepositAuthority"
+      },
+      {
+        "code": 31,
+        "kind": "errorNode",
+        "message": "InvalidSolDepositAuthority",
+        "name": "invalidSolDepositAuthority"
+      },
+      {
+        "code": 32,
+        "kind": "errorNode",
+        "message": "InvalidPreferredValidator",
+        "name": "invalidPreferredValidator"
+      },
+      {
+        "code": 33,
+        "kind": "errorNode",
+        "message": "TransientAccountInUse",
+        "name": "transientAccountInUse"
+      },
+      {
+        "code": 34,
+        "kind": "errorNode",
+        "message": "InvalidSolWithdrawAuthority",
+        "name": "invalidSolWithdrawAuthority"
+      },
+      {
+        "code": 35,
+        "kind": "errorNode",
+        "message": "SolWithdrawalTooLarge",
+        "name": "solWithdrawalTooLarge"
+      },
+      {
+        "code": 36,
+        "kind": "errorNode",
+        "message": "InvalidMetadataAccount",
+        "name": "invalidMetadataAccount"
+      },
+      {
+        "code": 37,
+        "kind": "errorNode",
+        "message": "UnsupportedMintExtension",
+        "name": "unsupportedMintExtension"
+      },
+      {
+        "code": 38,
+        "kind": "errorNode",
+        "message": "UnsupportedFeeAccountExtension",
+        "name": "unsupportedFeeAccountExtension"
+      },
+      {
+        "code": 39,
+        "kind": "errorNode",
+        "message": "Instruction exceeds desired slippage limit",
+        "name": "exceededSlippage"
+      },
+      {
+        "code": 40,
+        "kind": "errorNode",
+        "message": "IncorrectMintDecimals",
+        "name": "incorrectMintDecimals"
+      },
+      {
+        "code": 41,
+        "kind": "errorNode",
+        "message": "ReserveDepleted",
+        "name": "reserveDepleted"
+      },
+      {
+        "code": 42,
+        "kind": "errorNode",
+        "message": "Missing required sysvar account",
+        "name": "missingRequiredSysvar"
+      },
+      {
+        "code": 43,
+        "kind": "errorNode",
+        "message": "Epoch reward distribution is currently in progress",
+        "name": "epochRewardDistributionInProgress"
+      },
+      {
+        "code": 44,
+        "kind": "errorNode",
+        "message": "The stake pool has too many validators",
+        "name": "tooManyValidatorsInPool"
+      }
+    ],
+    "instructions": [],
+    "kind": "programNode",
+    "name": "fogoStakePoolInterface",
+    "pdas": [],
+    "publicKey": "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr",
+    "version": "0.1.0"
+  },
+  "standard": "codama",
+  "version": "1.0.0"
+}

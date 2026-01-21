@@ -1,0 +1,54 @@
+[package]
+name = "fogo-stake-pool-interface"
+version = "0.1.0"
+description = "Fogo Stake Pool Interface - State types for deserializing stake pool accounts"
+authors = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+readme = "README.md"
+
+[lib]
+crate-type = ["lib"]
+
+[[bin]]
+name = "generate-idl"
+path = "src/bin/generate-idl.rs"
+required-features = ["codama"]
+
+[package.metadata.solana]
+program-id = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
+
+[dependencies]
+borsh = { version = "1.5", features = ["derive", "unstable__schema"], optional = true }
+bytemuck = { version = "1.23", features = ["derive"] }
+codama = { version = "0.7", optional = true }
+codama-macros = { version = "0.7", optional = true }
+num-derive = "0.4"
+num-traits = "0.2"
+num_enum = "0.7"
+serde = { version = "1.0", optional = true }
+serde_derive = { version = "1.0", optional = true }
+solana-program = "2.3"
+spl-pod = { version = "0.5", features = ["borsh"] }
+thiserror = "2.0"
+
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+serde_json = { version = "1.0", optional = true }
+
+[dev-dependencies]
+solana-sdk = "2.2"
+
+[features]
+default = ["borsh"]
+borsh = ["dep:borsh", "solana-program/borsh"]
+codama = ["dep:codama", "dep:codama-macros", "dep:serde_json", "serde"]
+serde = ["dep:serde", "dep:serde_derive"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+all-features = true
+rustdoc-args = ["--cfg=docsrs"]
+
+[lints]
+workspace = true
