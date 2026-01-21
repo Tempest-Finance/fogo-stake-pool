@@ -79,16 +79,15 @@ test-py-%:
 	$(MAKE) setup-py-venv-$*
 	cd $(call make-path,$*) && ./venv/bin/python3 -m pytest
 
-# Rust CI targets (called with Cargo package names like spl-stake-pool)
-# NOTE: These must come AFTER js/py targets so more specific patterns match first
+# Rust CI targets (called with path patterns like interface, clients-rust)
 format-check-%:
-	cargo $(nightly) fmt -p $* -- --check
+	cargo $(nightly) fmt --check --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
 clippy-%:
-	RUSTFLAGS="--allow=unexpected_cfgs" cargo $(nightly) clippy -p $* --all-targets -- -D warnings
+	RUSTFLAGS="--allow=unexpected_cfgs" cargo $(nightly) clippy --manifest-path $(call make-path,$*)/Cargo.toml --all-targets -- -D warnings $(ARGS)
 
 test-%:
-	RUSTFLAGS="--allow=unexpected_cfgs" SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p $*
+	RUSTFLAGS="--allow=unexpected_cfgs" SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
 build-doc-%:
 	cargo doc -p $* --no-deps
