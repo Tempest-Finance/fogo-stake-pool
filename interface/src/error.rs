@@ -2,11 +2,7 @@
 
 #[cfg(feature = "codama")]
 use codama_macros::CodamaErrors;
-use {
-    num_derive::FromPrimitive,
-    solana_program::program_error::ProgramError,
-    thiserror::Error,
-};
+use {num_derive::FromPrimitive, solana_program::program_error::ProgramError, thiserror::Error};
 
 /// Errors that may be returned by the Stake Pool program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
