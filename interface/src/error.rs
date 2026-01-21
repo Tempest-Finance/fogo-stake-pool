@@ -4,7 +4,7 @@
 use codama_macros::CodamaErrors;
 use {
     num_derive::FromPrimitive,
-    solana_program::{decode_error::DecodeError, program_error::ProgramError},
+    solana_program::program_error::ProgramError,
     thiserror::Error,
 };
 
@@ -177,11 +177,5 @@ pub enum StakePoolError {
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
         ProgramError::Custom(e as u32)
-    }
-}
-
-impl<T> DecodeError<T> for StakePoolError {
-    fn type_of() -> &'static str {
-        "Stake Pool Error"
     }
 }

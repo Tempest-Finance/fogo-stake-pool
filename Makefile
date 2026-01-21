@@ -84,7 +84,7 @@ format-check-%:
 	cargo $(nightly) fmt --check --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
 clippy-%:
-	RUSTFLAGS="--allow=unexpected_cfgs" cargo $(nightly) clippy --manifest-path $(call make-path,$*)/Cargo.toml --all-targets -- -D warnings $(ARGS)
+	RUSTFLAGS="--allow=unexpected_cfgs" cargo $(nightly) clippy --manifest-path $(call make-path,$*)/Cargo.toml --all-targets -- -D warnings -A deprecated $(ARGS)
 
 test-%:
 	RUSTFLAGS="--allow=unexpected_cfgs" SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
