@@ -25,7 +25,10 @@ use {
 
 /// Enum representing the account type managed by the program
 #[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub enum AccountType {
     /// If the account has not been initialized, the enum will be 0
@@ -40,7 +43,10 @@ pub enum AccountType {
 /// Initialized program details.
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub struct StakePool {
     /// Account type, must be `StakePool` currently
@@ -272,7 +278,10 @@ impl StakePool {
 /// Storage list for all validator stake accounts in the pool.
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub struct ValidatorList {
     /// Data outside of the validator list, separated out for cheaper
@@ -286,7 +295,10 @@ pub struct ValidatorList {
 /// Helper type to deserialize just the start of a `ValidatorList`
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub struct ValidatorListHeader {
     /// Account type, must be `ValidatorList` currently
@@ -362,16 +374,11 @@ impl ValidatorList {
 }
 
 /// Status of the stake account in the validator list, for accounting
-#[derive(
-    ToPrimitive,
-    FromPrimitive,
-    Copy,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
+#[derive(ToPrimitive, FromPrimitive, Copy, Clone, Debug, Default, PartialEq)]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
 )]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub enum StakeStatus {
     /// Stake account is active, there may be a transient stake as well
@@ -394,16 +401,11 @@ pub enum StakeStatus {
 /// Wrapper struct that can be `Pod`, containing a byte that *should* be a valid
 /// `StakeStatus` underneath.
 #[repr(transparent)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Pod,
-    Zeroable,
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
 )]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub struct PodStakeStatus(u8);
 
@@ -429,16 +431,11 @@ impl From<StakeStatus> for PodStakeStatus {
 /// `bytemuck` transmute, which means that this structure cannot have any
 /// undeclared alignment-padding in its representation.
 #[repr(C)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    Pod,
-    Zeroable,
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
 )]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub struct ValidatorStakeInfo {
     /// Amount of lamports on the validator stake account, including rent
@@ -476,8 +473,7 @@ pub struct ValidatorStakeInfo {
 impl ValidatorStakeInfo {
     /// Get the total lamports on this validator (active and transient)
     pub fn stake_lamports(&self) -> Option<u64> {
-        u64::from(self.active_stake_lamports)
-            .checked_add(self.transient_stake_lamports.into())
+        u64::from(self.active_stake_lamports).checked_add(self.transient_stake_lamports.into())
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
@@ -550,7 +546,10 @@ impl Pack for ValidatorStakeInfo {
 /// native `Option`
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshSerialize, BorshDeserialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub enum FutureEpoch<T> {
     /// Nothing is set
@@ -605,7 +604,10 @@ impl<T> From<FutureEpoch<T>> for Option<T> {
 /// This is a non-generic version specifically for Fee values.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshSerialize, BorshDeserialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub enum FutureEpochFee {
     /// Nothing is set
@@ -680,7 +682,10 @@ impl From<FutureEpochFee> for Option<Fee> {
 /// If either the numerator or the denominator is 0, the fee is considered to be 0.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshSerialize, BorshDeserialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub struct Fee {
     /// Denominator of the fee ratio
@@ -720,7 +725,10 @@ impl fmt::Display for Fee {
 
 /// The type of fees that can be set on the stake pool
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "borsh", derive(BorshDeserialize, BorshSerialize, BorshSchema))]
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "codama", derive(CodamaType))]
 pub enum FeeType {
     /// Referral fees for SOL deposits

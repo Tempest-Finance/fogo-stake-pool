@@ -157,8 +157,7 @@ mod tests {
     fn test_transient_stake_derivation() {
         let vote = Pubkey::new_unique();
         let stake_pool = Pubkey::new_unique();
-        let (pda, _bump) =
-            find_transient_stake_program_address(&id(), &vote, &stake_pool, 0);
+        let (pda, _bump) = find_transient_stake_program_address(&id(), &vote, &stake_pool, 0);
         assert!(!pda.is_on_curve());
     }
 
