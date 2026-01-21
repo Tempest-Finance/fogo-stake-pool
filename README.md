@@ -30,7 +30,7 @@ make help
 
 | Directory       | Description                                                              |
 | --------------- | ------------------------------------------------------------------------ |
-| `program/`      | On-chain Solana BPF program (Rust)                                       |
+| `program/`      | On-chain SVM program (Rust)                                              |
 | `interface/`    | State types for deserializing accounts (lightweight, no processor)       |
 | `clients/rust/` | Generated Rust client via [Codama](https://github.com/codama-idl/codama) |
 | `clients/cli/`  | Command-line interface for stake pool operations                         |
