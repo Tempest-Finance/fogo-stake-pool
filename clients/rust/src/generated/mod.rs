@@ -11,4 +11,5 @@ pub mod programs;
 pub mod shared;
 pub mod types;
 
+#[allow(unused_imports)]
 pub(crate) use programs::*;
