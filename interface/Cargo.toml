@@ -23,21 +23,20 @@ codama = { version = "0.7", optional = true }
 codama-macros = { version = "0.7", optional = true }
 num-derive = "0.4"
 num-traits = "0.2"
-num_enum = "0.7"
 serde = { version = "1.0", optional = true }
 serde_derive = { version = "1.0", optional = true }
 solana-program = "2.3"
 spl-pod = { version = "0.5", features = ["borsh"] }
 thiserror = "2.0"
 
+[package.metadata.cargo-machete]
+ignored = ["serde", "serde_derive"]  # Optional deps used via feature flags
+
 [package.metadata.solana]
 program-id = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
 serde_json = { version = "1.0", optional = true }
-
-[dev-dependencies]
-solana-sdk = "2.2"
 
 [features]
 default = ["borsh"]
