@@ -26,7 +26,7 @@ SOL Deposit Referral Fee: 0% of SOL Deposit Fee
 
 ## SDK integration
 
-See [Getting Started](./getting-started.md#using-the-typescript-sdk) for full documentation.
+See [Getting Started](../getting-started.md#using-the-typescript-sdk) for full documentation.
 
 ```bash
 npm install @ignitionfi/fogo-stake-pool
