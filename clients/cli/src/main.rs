@@ -23,7 +23,6 @@ use {
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
         ArgConstant,
     },
-    std::str::FromStr,
     solana_cli_output::OutputFormat,
     solana_client::rpc_client::RpcClient,
     solana_program::{
@@ -58,6 +57,7 @@ use {
     spl_token_2022::{
         check_spl_token_program_account, extension::StateWithExtensions, state::Mint,
     },
+    std::str::FromStr,
     std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
 };
 
@@ -304,11 +304,8 @@ fn send_transaction_or_squads_proposal_with_external_signers(
             let result = config.rpc_client.simulate_transaction(&transaction)?;
             println!("Simulate result: {:?}", result);
         } else {
-            let transaction = Transaction::new(
-                &[config.fee_payer.as_ref()],
-                message,
-                recent_blockhash,
-            );
+            let transaction =
+                Transaction::new(&[config.fee_payer.as_ref()], message, recent_blockhash);
             let signature = config
                 .rpc_client
                 .send_and_confirm_transaction_with_spinner(&transaction)?;
@@ -2254,8 +2251,7 @@ fn command_set_manager(
 
     if let Some(multisig_address) = config.squads_multisig {
         // Squads mode
-        let vault_pubkey =
-            squads::get_vault_pubkey(&config.rpc_client, &multisig_address)?;
+        let vault_pubkey = squads::get_vault_pubkey(&config.rpc_client, &multisig_address)?;
 
         if stake_pool.manager == vault_pubkey {
             // Case A: Vault is ALREADY the manager, transferring to someone else
@@ -2263,8 +2259,8 @@ fn command_set_manager(
             let instruction = spl_stake_pool::instruction::set_manager(
                 &config.stake_pool_program_id,
                 stake_pool_address,
-                &vault_pubkey,          // current manager (vault, signs via PDA)
-                &new_manager_pubkey,    // new manager
+                &vault_pubkey,       // current manager (vault, signs via PDA)
+                &new_manager_pubkey, // new manager
                 &new_fee_receiver,
             );
 
@@ -2314,9 +2310,14 @@ fn command_set_manager(
             let external_signers = vec![config.manager.pubkey()];
 
             println!("Creating proposal to transfer manager to Squads vault...");
-            println!("  Current manager: {} (will sign at execution)", config.manager.pubkey());
+            println!(
+                "  Current manager: {} (will sign at execution)",
+                config.manager.pubkey()
+            );
             println!("  New manager (vault): {}", vault_pubkey);
-            println!("\nIMPORTANT: The current manager keypair must sign the execute_transaction call!");
+            println!(
+                "\nIMPORTANT: The current manager keypair must sign the execute_transaction call!"
+            );
 
             return send_transaction_or_squads_proposal_with_external_signers(
                 config,
@@ -2465,8 +2466,7 @@ fn command_set_fee(
         );
     }
 
-    let mut signers: Vec<&dyn Signer> =
-        vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    let mut signers: Vec<&dyn Signer> = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
@@ -3730,12 +3730,7 @@ fn main() {
                 };
 
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
-            command_set_manager(
-                &config,
-                &stake_pool_address,
-                new_manager,
-                &new_fee_receiver,
-            )
+            command_set_manager(&config, &stake_pool_address, new_manager, &new_fee_receiver)
         }
         ("set-staker", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();

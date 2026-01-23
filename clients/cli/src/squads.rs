@@ -263,9 +263,9 @@ pub fn create_transaction_instruction(
     Instruction {
         program_id: SQUADS_MPL_PROGRAM_ID,
         accounts: vec![
-            AccountMeta::new(*multisig, false),          // mut, not signer
-            AccountMeta::new(*transaction_pda, false),   // mut (init), not signer
-            AccountMeta::new(*creator, true),            // mut, signer
+            AccountMeta::new(*multisig, false),        // mut, not signer
+            AccountMeta::new(*transaction_pda, false), // mut (init), not signer
+            AccountMeta::new(*creator, true),          // mut, signer
             AccountMeta::new_readonly(system_program::id(), false),
         ],
         data,
@@ -370,7 +370,12 @@ pub fn build_proposal_instructions(
     stake_pool_instructions: &[Instruction],
     auto_approve: bool,
 ) -> Result<SquadsProposalResult, Box<dyn std::error::Error>> {
-    build_proposal_instructions_with_external_signers(config, stake_pool_instructions, auto_approve, &[])
+    build_proposal_instructions_with_external_signers(
+        config,
+        stake_pool_instructions,
+        auto_approve,
+        &[],
+    )
 }
 
 /// Build instructions to propose stake pool operation(s) to a Squads multisig
@@ -388,10 +393,14 @@ pub fn build_proposal_instructions_with_external_signers(
     let multisig = get_multisig_account(config.rpc_client, &config.multisig_address)?;
 
     // Calculate the new transaction index
-    let new_transaction_index = multisig.transaction_index.checked_add(1).ok_or("Transaction index overflow")?;
+    let new_transaction_index = multisig
+        .transaction_index
+        .checked_add(1)
+        .ok_or("Transaction index overflow")?;
 
     // Derive PDAs
-    let (transaction_pda, _) = find_transaction_pda(&config.multisig_address, new_transaction_index);
+    let (transaction_pda, _) =
+        find_transaction_pda(&config.multisig_address, new_transaction_index);
 
     let proposer_pubkey = config.proposer.pubkey();
 
