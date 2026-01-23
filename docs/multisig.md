@@ -1,298 +1,169 @@
-# Squads Multisig Guide
+# Squads v3 Multisig Integration
 
-This guide explains how to manage the Fogo Stake Pool using [Squads v3](https://backup.v3.squads.so/) multisig.
-
-## Table of Contents
-
-- [Setup](#setup)
-- [Program Upgrades](#program-upgrades)
-- [Stake Pool Management](#stake-pool-management)
-- [Troubleshooting](#troubleshooting)
-- [Reference](#reference)
+Manage the Fogo Stake Pool with [Squads v3](https://backup.v3.squads.so/) multisig.
 
 ## Setup
 
-### Configure Squads for Fogo Network
-
-Before using Squads with Fogo, configure the RPC endpoint:
+### Configure Squads UI for Fogo
 
 1. Go to [Squads v3](https://backup.v3.squads.so/)
-2. Click **Settings** (gear icon)
-3. Set **RPC URL** to:
-   - Mainnet: `https://mainnet.fogo.io`
-   - Testnet: `https://testnet.fogo.io`
-4. Save settings
+2. Click **Settings** → **RPC URL**
+3. Enter: `https://mainnet.fogo.io` (or `https://testnet.fogo.io`)
+4. Save
 
-> **Note**: Squads v3 works with Fogo because Fogo is 100% Solana-compatible at the RPC level.
+### Required Information
 
-### Prerequisites
+- **Multisig Address**: Found in Squads UI → Your Squad → Settings
+- **Vault Address**: Found in Squads UI → Settings → Vault Address
+- **Member Keypair**: A keypair that is a member of the multisig
 
-- Access to [Squads v3](https://backup.v3.squads.so/)
-- Wallet connected as a multisig member
-- For upgrades: `solana-verify` CLI and Docker
-- Sufficient FOGO for transaction fees
+---
+
+## CLI Usage
+
+### Global Options
+
+| Argument                | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `--squads-multisig`     | Multisig address. Enables proposal mode. |
+| `--squads-auto-approve` | Auto-approve after creating proposal     |
+
+### Basic Example
+
+```bash
+fogo-stake-pool set-staker <POOL> <NEW_STAKER> \
+  --squads-multisig <MULTISIG> \
+  --fee-payer <MEMBER_KEYPAIR> \
+  --url https://mainnet.fogo.io
+```
+
+When `--squads-multisig` is set, the CLI creates a proposal instead of executing directly.
+
+---
+
+## Transfer Manager to Multisig
+
+The `set_manager` instruction requires both current and new manager to sign. Use this two-step process:
+
+### Step 1: Transfer to Member Keypair
+
+```bash
+fogo-stake-pool set-manager <POOL> \
+  --new-manager <MEMBER_KEYPAIR> \
+  --manager <CURRENT_MANAGER_KEYPAIR> \
+  --url https://mainnet.fogo.io
+```
+
+### Step 2: Transfer to Vault via Squads
+
+```bash
+fogo-stake-pool set-manager <POOL> \
+  --new-manager <VAULT_PUBKEY> \
+  --manager <MEMBER_KEYPAIR> \
+  --fee-payer <MEMBER_KEYPAIR> \
+  --squads-multisig <MULTISIG> \
+  --url https://mainnet.fogo.io
+```
+
+After members approve in Squads UI, execute the proposal.
+
+---
+
+## Common Operations
+
+### Set Fee
+
+```bash
+fogo-stake-pool set-fee <POOL> epoch <NUMERATOR> <DENOMINATOR> \
+  --squads-multisig <MULTISIG> \
+  --fee-payer <MEMBER_KEYPAIR> \
+  --url https://mainnet.fogo.io
+```
+
+Fee types: `epoch`, `stake-deposit`, `sol-deposit`, `stake-withdrawal`, `sol-withdrawal`
+
+### Set Staker
+
+```bash
+fogo-stake-pool set-staker <POOL> <NEW_STAKER_PUBKEY> \
+  --squads-multisig <MULTISIG> \
+  --fee-payer <MEMBER_KEYPAIR> \
+  --url https://mainnet.fogo.io
+```
+
+### Set Funding Authority
+
+```bash
+fogo-stake-pool set-funding-authority <POOL> <TYPE> <AUTHORITY> \
+  --squads-multisig <MULTISIG> \
+  --fee-payer <MEMBER_KEYPAIR> \
+  --url https://mainnet.fogo.io
+```
+
+Types: `stake-deposit`, `sol-deposit`, `sol-withdraw`
+
+### Change Fee Receiver
+
+```bash
+fogo-stake-pool set-manager <POOL> \
+  --new-fee-receiver <TOKEN_ACCOUNT> \
+  --squads-multisig <MULTISIG> \
+  --fee-payer <MEMBER_KEYPAIR> \
+  --url https://mainnet.fogo.io
+```
+
+Note: Fee receiver must be a token account for the pool mint.
 
 ---
 
 ## Program Upgrades
 
-### Overview
-
-Program upgrades follow this workflow:
-
-1. Build verifiable program binary
-2. Write binary to buffer account
-3. Transfer buffer authority to Squads
-4. Create upgrade proposal
-5. Collect approvals
-6. Execute upgrade
-7. Upload verification metadata
-
-### Step 1: Build Verifiable Program
-
-```bash
-# Ensure Docker is running
-docker ps
-
-# Build the program
-solana-verify build --library-name spl_stake_pool
-
-# Verify build hash
-solana-verify get-executable-hash target/deploy/spl_stake_pool.so
-```
-
-### Step 2: Write to Buffer
-
-```bash
-solana program write-buffer \
-  --url https://mainnet.fogo.io \
-  target/deploy/spl_stake_pool.so
-```
-
-Save the buffer address from output:
-
-```
-Buffer: BuFfEr111111111111111111111111111111111111
-```
-
-Verify buffer hash matches local build:
-
-```bash
-solana-verify get-buffer-hash \
-  -u https://mainnet.fogo.io \
-  --buffer-address <BUFFER_ADDRESS>
-```
-
-### Step 3: Transfer Buffer Authority
-
-```bash
-solana program set-buffer-authority \
-  --url https://mainnet.fogo.io \
-  <BUFFER_ADDRESS> \
-  --new-buffer-authority <SQUADS_VAULT_ADDRESS>
-```
-
-### Step 4: Create Upgrade Proposal
-
-1. Open [Squads v3](https://backup.v3.squads.so/#/programs/)
-2. Connect wallet and select your multisig
-3. Go to **Programs** in sidebar
-4. Enter program ID `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr`
-5. Enter the buffer address and buffer refund address
-6. Click **Create upgrade**
-
-### Step 5: Collect Approvals
-
-Share proposal link with other signers. Each member should:
-
-1. Verify buffer hash independently
-2. Review transaction details
-3. Click **Approve**
-
-### Step 6: Execute Upgrade
-
-Once threshold is reached:
-
-1. Click **Execute**
-2. Verify upgrade:
-   ```bash
-   solana-verify get-program-hash \
-     -u https://mainnet.fogo.io \
-     SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
-   ```
-
-### Step 7: Upload Verification
-
-```bash
-solana-verify verify-from-repo \
-  -u https://mainnet.fogo.io \
-  --program-id SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr \
-  --library-name spl_stake_pool \
-  --mount-path program \
-  https://github.com/Tempest-Finance/fogo-stake-pool
-```
-
----
-
-## Stake Pool Management
-
-For stake pool operations that require multisig approval (like fee changes), the pool's manager authority must be set to the Squads vault address.
-
-### Transfer Manager to Multisig
-
-To transfer the stake pool manager authority to a Squads multisig vault:
-
-```bash
-fogo-stake-pool set-manager SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr --new-manager-pubkey 2GUNgc8kGvJhD3iBYf4fkH9cjofvAbdgxE6iwon8sN6v --url https://mainnet.fogo.io --sign-only
-```
-
-> **Important**: Once transferred to the multisig, all manager operations will require multisig approval. Ensure you have access to the multisig before transferring.
-
-### Generate Transaction for Squads
-
-Once the manager is a multisig, use the `--sign-only` flag with `--multisig-signer` to generate transactions for Squads import:
-
-```bash
-fogo-stake-pool set-fee \
-  <POOL_ADDRESS> \
-  epoch \
-  5 \
-  100 \
-  --url https://mainnet.fogo.io \
-  --sign-only \
-  --multisig-signer <SQUADS_VAULT_ADDRESS> \
-  --no-update
-```
-
-This outputs a base58-encoded transaction string. Copy the output and:
-
-1. Open [Squads v3](https://backup.v3.squads.so/)
-2. Select your multisig
-3. Click **Import Transaction**
-4. Paste the transaction string
-5. Review and submit for approval
-
-### Fee Types Reference
-
-Available fee types for `set-fee` command:
-
-- `epoch` - Fee on staking rewards
-- `stake-deposit` - Fee on stake deposits
-- `sol-deposit` - Fee on SOL deposits
-- `stake-withdrawal` - Fee on stake withdrawals
-- `sol-withdrawal` - Fee on SOL withdrawals
-
-### Direct Execution (Single Signer)
-
-If the manager is a single keypair (not multisig):
-
-```bash
-fogo-stake-pool set-fee \
-  <POOL_ADDRESS> \
-  epoch \
-  5 \
-  100 \
-  --url https://mainnet.fogo.io
-```
+1. **Build**: `solana-verify build --library-name spl_stake_pool`
+2. **Buffer**: `solana program write-buffer --url https://mainnet.fogo.io target/deploy/spl_stake_pool.so`
+3. **Transfer authority**: `solana program set-buffer-authority <BUFFER> --new-buffer-authority <VAULT>`
+4. **Propose**: In Squads UI → Programs → Enter program ID and buffer → Create upgrade
+5. **Approve & Execute**: Members approve, then execute
+6. **Verify**: `solana-verify verify-from-repo ...`
 
 ---
 
 ## Troubleshooting
 
-### RPC Connection Failed
+### "new_manager must be the vault"
 
-Ensure Squads is configured with correct Fogo RPC:
+Use the two-step transfer process described above.
 
-- Settings → RPC URL → `https://mainnet.fogo.io`
+### "Proposer is not a member"
 
-### Transaction Simulation Failed
+Your fee-payer keypair must be a multisig member.
 
-Common causes:
+### Proposal not visible
 
-- Incorrect account ordering
-- Missing signer
-- Insufficient funds
-- Wrong program ID
+Verify RPC is set to `https://mainnet.fogo.io` in Squads settings.
 
-Check transaction details carefully before submitting.
+### Simulation failed
 
-### Proposal Not Visible
+- Try without `--no-update` flag
+- Check you have sufficient SOL for fees
+- Verify you're using the correct authority (manager vs staker)
 
-- Ensure all members use same RPC settings
-- Refresh the page
-- Check wallet is connected to correct multisig
-
-### Buffer Authority Transfer Failed
-
-Verify you're the current buffer authority:
-
-```bash
-solana program show --url https://mainnet.fogo.io --buffers
-```
-
-### Upgrade Execution Failed
-
-Check:
-
-- Sufficient FOGO for fees
-- Buffer account still exists
-- Program is upgradeable (not immutable)
-
-```bash
-solana program show \
-  --url https://mainnet.fogo.io \
-  SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
-```
+Use `--dry-run` to debug before executing.
 
 ---
 
 ## Reference
 
-### Key Addresses
-
-| Item         | Address                                       |
-| ------------ | --------------------------------------------- |
-| Program ID   | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
-| Squads Vault | `<YOUR_SQUADS_VAULT_ADDRESS>`                 |
-
-### RPC Endpoints
-
-| Network | URL                       |
-| ------- | ------------------------- |
-| Mainnet | `https://mainnet.fogo.io` |
-| Testnet | `https://testnet.fogo.io` |
-
-### Useful Commands
-
-```bash
-# Check program info
-solana program show -u https://mainnet.fogo.io SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
-
-# List buffers
-solana program show -u https://mainnet.fogo.io --buffers
-
-# Close unused buffer (reclaim rent)
-solana program close -u https://mainnet.fogo.io <BUFFER_ADDRESS>
-
-# Get program hash
-solana-verify get-program-hash -u https://mainnet.fogo.io SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
-
-# Get buffer hash
-solana-verify get-buffer-hash -u https://mainnet.fogo.io --buffer-address <BUFFER_ADDRESS>
-```
-
-### Security Best Practices
-
-1. **Always use verifiable builds** for program upgrades
-2. **Verify buffer hash** before approving upgrade proposals
-3. **Document all changes** in proposal descriptions
-4. **Test on testnet** before mainnet operations
-5. **Review transaction simulation** before executing
+| Item               | Value                                         |
+| ------------------ | --------------------------------------------- |
+| Stake Pool Program | `SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr` |
+| Squads v3 Program  | `SMPLecH534NA9acpos4G6x7uf3LWbCAwZQE9e8ZekMu` |
+| Mainnet RPC        | `https://mainnet.fogo.io`                     |
+| Testnet RPC        | `https://testnet.fogo.io`                     |
 
 ---
 
 ## See Also
 
-- [verification.md](./verification.md) - Program verification guide
-- [Squads v3](https://backup.v3.squads.so/) - Multisig interface
-- [Fogo Documentation](https://docs.fogo.io) - Fogo network docs
+- [CLI Reference](./cli-reference.md)
+- [Program Verification](./verification.md)
+- [Squads v3 Documentation](https://docs.squads.so/)
