@@ -1743,6 +1743,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
+ "solana-sdk-ids",
  "solana-stake-interface",
  "solana-system-interface",
  "spl-associated-token-account",

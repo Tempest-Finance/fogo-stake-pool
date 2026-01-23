@@ -1,6 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 mod client;
 mod output;
+mod squads;
 
 use {
     crate::{
@@ -22,6 +23,7 @@ use {
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
         ArgConstant,
     },
+    std::str::FromStr,
     solana_cli_output::OutputFormat,
     solana_client::rpc_client::RpcClient,
     solana_program::{
@@ -38,7 +40,6 @@ use {
         message::Message,
         native_token::{self, Sol},
         signature::{Keypair, Signer},
-        signer::null_signer::NullSigner,
         signers::Signers,
         transaction::Transaction,
     },
@@ -71,16 +72,43 @@ pub(crate) struct Config {
     token_owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
-    sign_only: bool,
-    multisig_signers: Vec<NullSigner>,
     no_update: bool,
     compute_unit_price: Option<u64>,
     compute_unit_limit: ComputeUnitLimit,
+    /// If set, wrap instructions in a Squads v3 multisig proposal
+    squads_multisig: Option<Pubkey>,
+    /// Whether to auto-approve the Squads proposal after creating it
+    squads_auto_approve: bool,
 }
 
 type CommandResult = Result<(), Error>;
 
 const STAKE_STATE_LEN: usize = 200;
+
+/// Validator that accepts both pubkey and keypair/signer paths
+fn is_pubkey_or_signer(value: String) -> Result<(), String> {
+    // First try as pubkey
+    if Pubkey::from_str(&value).is_ok() {
+        return Ok(());
+    }
+    // Then try as signer
+    is_valid_signer(value)
+}
+
+/// Represents either a pubkey (for multisig vault) or a keypair signer
+pub enum PubkeyOrSigner {
+    Pubkey(Pubkey),
+    Signer(Box<dyn Signer>),
+}
+
+impl PubkeyOrSigner {
+    pub fn pubkey(&self) -> Pubkey {
+        match self {
+            PubkeyOrSigner::Pubkey(pk) => *pk,
+            PubkeyOrSigner::Signer(s) => s.pubkey(),
+        }
+    }
+}
 
 macro_rules! unique_signers {
     ($vec:ident) => {
@@ -204,17 +232,105 @@ fn get_latest_blockhash(client: &RpcClient) -> Result<Hash, Error> {
         .0)
 }
 
+/// Send a transaction, or if Squads mode is enabled, wrap the instructions
+/// in a Squads multisig proposal instead.
+fn send_transaction_or_squads_proposal(
+    config: &Config,
+    instructions: &[Instruction],
+    signers: Vec<&dyn Signer>,
+) -> Result<(), Error> {
+    send_transaction_or_squads_proposal_with_external_signers(config, instructions, signers, &[])
+}
+
+/// Send a transaction, or if Squads mode is enabled, wrap the instructions
+/// in a Squads multisig proposal with support for external signers.
+///
+/// `external_signers` are pubkeys that must sign the execute_transaction call
+/// (in addition to the vault PDA which signs via invoke_signed).
+fn send_transaction_or_squads_proposal_with_external_signers(
+    config: &Config,
+    instructions: &[Instruction],
+    signers: Vec<&dyn Signer>,
+    external_signers: &[Pubkey],
+) -> Result<(), Error> {
+    if let Some(multisig_address) = config.squads_multisig {
+        // Squads mode: create a proposal instead of executing directly
+        let proposal_config = squads::SquadsProposalConfig {
+            rpc_client: &config.rpc_client,
+            multisig_address,
+            proposer: config.fee_payer.as_ref(),
+            fee_payer: config.fee_payer.as_ref(),
+        };
+
+        let result = squads::build_proposal_instructions_with_external_signers(
+            &proposal_config,
+            instructions,
+            config.squads_auto_approve,
+            external_signers,
+        )?;
+
+        println!("Creating Squads multisig proposal...");
+        println!("  Multisig: {}", multisig_address);
+        println!("  Transaction Index: {}", result.transaction_index);
+        println!("  Transaction PDA: {}", result.transaction_pda);
+
+        if !result.external_signers.is_empty() {
+            println!("\n⚠️  IMPORTANT: External signers required at execution time:");
+            for signer in &result.external_signers {
+                println!("    - {}", signer);
+            }
+            println!("\n  These keypairs must sign the execute_transaction call.");
+            println!("  The signer(s) must be passed in remaining_accounts when executing.");
+        }
+
+        // Build and send the Squads proposal transaction
+        let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
+        let mut all_instructions = result.instructions;
+
+        if let Some(compute_unit_price) = config.compute_unit_price {
+            all_instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
+                compute_unit_price,
+            ));
+        }
+
+        let message = Message::new_with_blockhash(
+            &all_instructions,
+            Some(&config.fee_payer.pubkey()),
+            &recent_blockhash,
+        );
+
+        if config.dry_run {
+            let transaction = Transaction::new_unsigned(message);
+            let result = config.rpc_client.simulate_transaction(&transaction)?;
+            println!("Simulate result: {:?}", result);
+        } else {
+            let transaction = Transaction::new(
+                &[config.fee_payer.as_ref()],
+                message,
+                recent_blockhash,
+            );
+            let signature = config
+                .rpc_client
+                .send_and_confirm_transaction_with_spinner(&transaction)?;
+            println!("Proposal created! Signature: {}", signature);
+            println!("\nOther multisig members can now approve this transaction.");
+            println!("Transaction PDA to approve: {}", result.transaction_pda);
+        }
+
+        Ok(())
+    } else {
+        // Normal mode: execute directly
+        let transaction = checked_transaction_with_signers(config, instructions, &signers)?;
+        send_transaction(config, transaction)?;
+        Ok(())
+    }
+}
+
 fn send_transaction_no_wait(
     config: &Config,
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
-    if config.sign_only {
-        // Serialize the message (not the full transaction) for multisig import
-        let message_data = transaction.message.serialize();
-        use base64::{engine::general_purpose::STANDARD, Engine};
-        println!("Base58: {}", bs58::encode(&message_data).into_string());
-        println!("Base64: {}", STANDARD.encode(&message_data));
-    } else if config.dry_run {
+    if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
     } else {
@@ -228,13 +344,7 @@ fn send_transaction(
     config: &Config,
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
-    if config.sign_only {
-        // Serialize the message (not the full transaction) for multisig import
-        let message_data = transaction.message.serialize();
-        use base64::{engine::general_purpose::STANDARD, Engine};
-        println!("Base58: {}", bs58::encode(&message_data).into_string());
-        println!("Base64: {}", STANDARD.encode(&message_data));
-    } else if config.dry_run {
+    if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
     } else {
@@ -280,20 +390,11 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
         Some(&config.fee_payer.pubkey()),
         &recent_blockhash,
     );
-    if !config.sign_only {
-        check_fee_payer_balance(
-            config,
-            additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
-        )?;
-    }
-    let transaction = if config.sign_only {
-        // For sign-only mode, use partial signing to allow NullSigners
-        let mut transaction = Transaction::new_unsigned(message);
-        transaction.partial_sign(signers, recent_blockhash);
-        transaction
-    } else {
-        Transaction::new(signers, message, recent_blockhash)
-    };
+    check_fee_payer_balance(
+        config,
+        additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
+    )?;
+    let transaction = Transaction::new(signers, message, recent_blockhash);
     Ok(transaction)
 }
 
@@ -2120,79 +2221,128 @@ fn command_withdraw_sol(
 fn command_set_manager(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_manager: &Option<Box<dyn Signer>>,
-    new_manager_pubkey: &Option<Pubkey>,
+    new_manager: Option<PubkeyOrSigner>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
-    if !config.no_update && !config.sign_only {
+    if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
-    // Determine new manager pubkey (the one being set)
-    let new_manager_pk: Pubkey = if let Some(signer) = new_manager {
-        signer.pubkey()
-    } else if let Some(pubkey) = new_manager_pubkey {
-        *pubkey
-    } else {
-        stake_pool.manager
+    // Determine new manager pubkey and whether we have a signer for it
+    let (new_manager_pubkey, new_manager_signer): (Pubkey, Option<&dyn Signer>) = match &new_manager
+    {
+        None => (stake_pool.manager, None),
+        Some(PubkeyOrSigner::Pubkey(pk)) => (*pk, None),
+        Some(PubkeyOrSigner::Signer(s)) => (s.pubkey(), Some(s.as_ref())),
     };
 
-    // Determine new fee receiver
+    // Validate fee receiver
     let new_fee_receiver = match new_fee_receiver {
         None => stake_pool.manager_fee_account,
         Some(value) => {
-            if !config.sign_only {
-                // Check for fee receiver being a valid token account and have to same mint as
-                // the stake pool
-                let token_account =
-                    get_token_account(&config.rpc_client, value, &stake_pool.pool_mint)?;
-                if token_account.mint != stake_pool.pool_mint {
-                    return Err("Fee receiver account belongs to a different mint"
-                        .to_string()
-                        .into());
-                }
+            let token_account =
+                get_token_account(&config.rpc_client, value, &stake_pool.pool_mint)?;
+            if token_account.mint != stake_pool.pool_mint {
+                return Err("Fee receiver account belongs to a different mint"
+                    .to_string()
+                    .into());
             }
             *value
         }
     };
 
-    // Determine current manager pubkey and signers based on mode
-    let (current_manager_pubkey, signers): (Pubkey, Vec<&dyn Signer>) =
-        if config.sign_only && !config.multisig_signers.is_empty() {
-            // Use first multisig signer as current manager for sign-only mode
-            let manager_pubkey = config.multisig_signers[0].pubkey();
+    if let Some(multisig_address) = config.squads_multisig {
+        // Squads mode
+        let vault_pubkey =
+            squads::get_vault_pubkey(&config.rpc_client, &multisig_address)?;
+
+        if stake_pool.manager == vault_pubkey {
+            // Case A: Vault is ALREADY the manager, transferring to someone else
+            // The vault will sign via invoke_signed, new_manager may need to sign externally
+            let instruction = spl_stake_pool::instruction::set_manager(
+                &config.stake_pool_program_id,
+                stake_pool_address,
+                &vault_pubkey,          // current manager (vault, signs via PDA)
+                &new_manager_pubkey,    // new manager
+                &new_fee_receiver,
+            );
+
             let mut signers: Vec<&dyn Signer> = vec![config.fee_payer.as_ref()];
-            for signer in &config.multisig_signers {
+            // If new_manager provided a signer, they need to sign the execute tx
+            if let Some(signer) = new_manager_signer {
                 signers.push(signer);
             }
-            // Add new manager signer if provided as keypair
-            if let Some(signer) = new_manager {
-                signers.push(signer.as_ref());
-            }
-            (manager_pubkey, signers)
-        } else {
-            let mut signers: Vec<&dyn Signer> =
-                vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-            // Add new manager signer if provided as keypair
-            if let Some(signer) = new_manager {
-                signers.push(signer.as_ref());
-            }
-            unique_signers!(signers);
-            (config.manager.pubkey(), signers)
-        };
 
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_manager(
-            &config.stake_pool_program_id,
-            stake_pool_address,
-            &current_manager_pubkey,
-            &new_manager_pk,
-            &new_fee_receiver,
-        )],
-        &signers,
-    )?;
+            // For this case, new_manager must sign at execution time
+            // We pass external_signers to mark which accounts need external signatures
+            let external_signers = if new_manager_signer.is_some() {
+                vec![new_manager_pubkey]
+            } else {
+                vec![]
+            };
+
+            return send_transaction_or_squads_proposal_with_external_signers(
+                config,
+                &[instruction],
+                signers,
+                &external_signers,
+            );
+        } else {
+            // Case B: Transferring TO the vault (vault becomes new_manager)
+            // Current manager (keypair) signs externally, vault signs via invoke_signed
+            if new_manager_pubkey != vault_pubkey {
+                return Err(format!(
+                    "In Squads mode, new_manager must be the vault ({}) when current manager is not the vault",
+                    vault_pubkey
+                ).into());
+            }
+
+            let instruction = spl_stake_pool::instruction::set_manager(
+                &config.stake_pool_program_id,
+                stake_pool_address,
+                &config.manager.pubkey(), // current manager (signs externally)
+                &vault_pubkey,            // new manager (vault, signs via PDA)
+                &new_fee_receiver,
+            );
+
+            // Current manager must sign the execute_transaction call
+            let signers: Vec<&dyn Signer> =
+                vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+
+            // Mark current manager as external signer for execution
+            let external_signers = vec![config.manager.pubkey()];
+
+            println!("Creating proposal to transfer manager to Squads vault...");
+            println!("  Current manager: {} (will sign at execution)", config.manager.pubkey());
+            println!("  New manager (vault): {}", vault_pubkey);
+            println!("\nIMPORTANT: The current manager keypair must sign the execute_transaction call!");
+
+            return send_transaction_or_squads_proposal_with_external_signers(
+                config,
+                &[instruction],
+                signers,
+                &external_signers,
+            );
+        }
+    }
+
+    // Normal mode: current manager signs directly
+    let instruction = spl_stake_pool::instruction::set_manager(
+        &config.stake_pool_program_id,
+        stake_pool_address,
+        &config.manager.pubkey(),
+        &new_manager_pubkey,
+        &new_fee_receiver,
+    );
+
+    let mut signers: Vec<&dyn Signer> = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    if let Some(signer) = new_manager_signer {
+        signers.push(signer);
+    }
+    unique_signers!(signers);
+
+    let transaction = checked_transaction_with_signers(config, &[instruction], &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -2202,21 +2352,38 @@ fn command_set_staker(
     stake_pool_address: &Pubkey,
     new_staker: &Pubkey,
 ) -> CommandResult {
-    if !config.no_update {
+    if !config.no_update && config.squads_multisig.is_none() {
         command_update(config, stake_pool_address, false, false, false)?;
     }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+
+    // For Squads mode, use the on-chain manager (which is the multisig vault)
+    let manager_pubkey = if config.squads_multisig.is_some() {
+        stake_pool.manager
+    } else {
+        config.manager.pubkey()
+    };
+
+    let instructions = vec![spl_stake_pool::instruction::set_staker(
+        &config.stake_pool_program_id,
+        stake_pool_address,
+        &manager_pubkey,
+        new_staker,
+    )];
+
+    // Squads mode: wrap in a proposal
+    if config.squads_multisig.is_some() {
+        return send_transaction_or_squads_proposal(
+            config,
+            &instructions,
+            vec![config.fee_payer.as_ref()],
+        );
+    }
+
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_staker(
-            &config.stake_pool_program_id,
-            stake_pool_address,
-            &config.manager.pubkey(),
-            new_staker,
-        )],
-        &signers,
-    )?;
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -2227,22 +2394,39 @@ fn command_set_funding_authority(
     new_authority: Option<Pubkey>,
     funding_type: FundingType,
 ) -> CommandResult {
-    if !config.no_update {
+    if !config.no_update && config.squads_multisig.is_none() {
         command_update(config, stake_pool_address, false, false, false)?;
     }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+
+    // For Squads mode, use the on-chain manager (which is the multisig vault)
+    let manager_pubkey = if config.squads_multisig.is_some() {
+        stake_pool.manager
+    } else {
+        config.manager.pubkey()
+    };
+
+    let instructions = vec![spl_stake_pool::instruction::set_funding_authority(
+        &config.stake_pool_program_id,
+        stake_pool_address,
+        &manager_pubkey,
+        new_authority.as_ref(),
+        funding_type,
+    )];
+
+    // Squads mode: wrap in a proposal
+    if config.squads_multisig.is_some() {
+        return send_transaction_or_squads_proposal(
+            config,
+            &instructions,
+            vec![config.fee_payer.as_ref()],
+        );
+    }
+
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_funding_authority(
-            &config.stake_pool_program_id,
-            stake_pool_address,
-            &config.manager.pubkey(),
-            new_authority.as_ref(),
-            funding_type,
-        )],
-        &signers,
-    )?;
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -2252,37 +2436,39 @@ fn command_set_fee(
     stake_pool_address: &Pubkey,
     new_fee: FeeType,
 ) -> CommandResult {
-    if !config.no_update && !config.sign_only {
+    if !config.no_update && config.squads_multisig.is_none() {
         command_update(config, stake_pool_address, false, false, false)?;
     }
 
-    // Determine manager pubkey and signer based on mode
-    let (manager_pubkey, signers): (Pubkey, Vec<&dyn Signer>) =
-        if config.sign_only && !config.multisig_signers.is_empty() {
-            // Use first multisig signer as manager for sign-only mode
-            let manager_pubkey = config.multisig_signers[0].pubkey();
-            let mut signers: Vec<&dyn Signer> = vec![config.fee_payer.as_ref()];
-            for signer in &config.multisig_signers {
-                signers.push(signer);
-            }
-            (manager_pubkey, signers)
-        } else {
-            let mut signers: Vec<&dyn Signer> =
-                vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-            unique_signers!(signers);
-            (config.manager.pubkey(), signers)
-        };
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_fee(
-            &config.stake_pool_program_id,
-            stake_pool_address,
-            &manager_pubkey,
-            new_fee,
-        )],
-        &signers,
-    )?;
+    // For Squads mode, use the on-chain manager (which is the multisig vault)
+    let manager_pubkey = if config.squads_multisig.is_some() {
+        stake_pool.manager
+    } else {
+        config.manager.pubkey()
+    };
+
+    let instructions = vec![spl_stake_pool::instruction::set_fee(
+        &config.stake_pool_program_id,
+        stake_pool_address,
+        &manager_pubkey,
+        new_fee,
+    )];
+
+    // Squads mode: wrap in a proposal
+    if config.squads_multisig.is_some() {
+        return send_transaction_or_squads_proposal(
+            config,
+            &instructions,
+            vec![config.fee_payer.as_ref()],
+        );
+    }
+
+    let mut signers: Vec<&dyn Signer> =
+        vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -2347,22 +2533,21 @@ fn main() {
                 .help("Simulate transaction instead of executing"),
         )
         .arg(
-            Arg::with_name("sign_only")
-                .long("sign-only")
-                .takes_value(false)
-                .global(true)
-                .help("Output base58-encoded transaction for multisig import instead of executing"),
-        )
-        .arg(
-            Arg::with_name("multisig_signer")
-                .long("multisig-signer")
+            Arg::with_name("squads_multisig")
+                .long("squads-multisig")
                 .value_name("PUBKEY")
                 .validator(is_valid_pubkey)
                 .takes_value(true)
-                .multiple(true)
                 .global(true)
-                .requires("sign_only")
-                .help("Pubkey of a multisig signer (requires --sign-only). Can be specified multiple times."),
+                .help("Squads v3 multisig address. When set, creates a proposal instead of executing directly."),
+        )
+        .arg(
+            Arg::with_name("squads_auto_approve")
+                .long("squads-auto-approve")
+                .takes_value(false)
+                .global(true)
+                .requires("squads_multisig")
+                .help("Automatically approve the Squads proposal after creating it (requires --squads-multisig)."),
         )
         .arg(
             Arg::with_name("no_update")
@@ -3069,18 +3254,10 @@ fn main() {
             .arg(
                 Arg::with_name("new_manager")
                     .long("new-manager")
-                    .validator(is_valid_signer)
-                    .value_name("KEYPAIR")
+                    .validator(is_pubkey_or_signer)
+                    .value_name("KEYPAIR_OR_PUBKEY")
                     .takes_value(true)
-                    .help("Keypair for the new stake pool manager."),
-            )
-            .arg(
-                Arg::with_name("new_manager_pubkey")
-                    .long("new-manager-pubkey")
-                    .validator(is_pubkey)
-                    .value_name("PUBKEY")
-                    .takes_value(true)
-                    .help("Public key for the new stake pool manager (use for multisig vaults)."),
+                    .help("Keypair or pubkey for the new stake pool manager. Use pubkey when transferring to a multisig vault."),
             )
             .arg(
                 Arg::with_name("new_fee_receiver")
@@ -3090,15 +3267,8 @@ fn main() {
                     .takes_value(true)
                     .help("Public key for the new account to set as the stake pool fee receiver."),
             )
-            // new_manager and new_manager_pubkey are mutually exclusive
-            .group(ArgGroup::with_name("new_manager_choice")
-                .arg("new_manager")
-                .arg("new_manager_pubkey")
-            )
-            // At least one of the options must be provided
             .group(ArgGroup::with_name("new_accounts")
                 .arg("new_manager")
-                .arg("new_manager_pubkey")
                 .arg("new_fee_receiver")
                 .required(true)
                 .multiple(true)
@@ -3312,15 +3482,8 @@ fn main() {
                 OutputFormat::Display
             });
         let dry_run = matches.is_present("dry_run");
-        let sign_only = matches.is_present("sign_only");
-        let multisig_signers: Vec<NullSigner> = matches
-            .values_of("multisig_signer")
-            .map(|values| {
-                values
-                    .map(|s| NullSigner::new(&s.parse::<Pubkey>().unwrap()))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let squads_multisig = pubkey_of(&matches, "squads_multisig");
+        let squads_auto_approve = matches.is_present("squads_auto_approve");
         let no_update = matches.is_present("no_update");
         let compute_unit_price = value_t!(matches, COMPUTE_UNIT_PRICE_ARG.name, u64).ok();
         let compute_unit_limit = matches
@@ -3348,11 +3511,11 @@ fn main() {
             token_owner,
             fee_payer,
             dry_run,
-            sign_only,
-            multisig_signers,
             no_update,
             compute_unit_price,
             compute_unit_limit,
+            squads_multisig,
+            squads_auto_approve,
         }
     };
 
@@ -3544,32 +3707,33 @@ fn main() {
         ("set-manager", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
 
-            let (new_manager, new_manager_pubkey) = if arg_matches.value_of("new_manager").is_some()
-            {
-                let signer = get_signer(
-                    arg_matches,
-                    "new-manager",
-                    arg_matches
-                        .value_of("new_manager")
-                        .expect("new manager argument not found!"),
-                    &mut wallet_manager,
-                    SignerFromPathConfig {
-                        allow_null_signer: true,
-                    },
-                );
-                (Some(signer), None)
-            } else if let Some(pubkey) = pubkey_of(arg_matches, "new_manager_pubkey") {
-                (None, Some(pubkey))
-            } else {
-                (None, None)
-            };
+            let new_manager: Option<PubkeyOrSigner> =
+                if let Some(value) = arg_matches.value_of("new_manager") {
+                    // First try to parse as pubkey
+                    if let Ok(pubkey) = Pubkey::from_str(value) {
+                        Some(PubkeyOrSigner::Pubkey(pubkey))
+                    } else {
+                        // Otherwise treat as signer/keypair
+                        let signer = get_signer(
+                            arg_matches,
+                            "new-manager",
+                            value,
+                            &mut wallet_manager,
+                            SignerFromPathConfig {
+                                allow_null_signer: true,
+                            },
+                        );
+                        Some(PubkeyOrSigner::Signer(signer))
+                    }
+                } else {
+                    None
+                };
 
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
             command_set_manager(
                 &config,
                 &stake_pool_address,
-                &new_manager,
-                &new_manager_pubkey,
+                new_manager,
                 &new_fee_receiver,
             )
         }
