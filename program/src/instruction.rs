@@ -810,7 +810,8 @@ pub enum StakePoolInstruction {
     ///  12. `[]` Stake program id
     ///  13. `[]` Program signer PDA
     ///  14. `[]` System program
-    ///  15. `[s, w]` Payer (pays rent for stake account creation)
+    ///  15. `[w]` Reserve stake account (to fund rent)
+    ///  16. `[]` Stake history sysvar
     WithdrawStakeWithSession {
         /// Pool tokens to burn in exchange for stake
         pool_tokens_in: u64,
@@ -822,7 +823,6 @@ pub enum StakePoolInstruction {
 
     ///   Withdraw lamports from a user stake account via a Fogo session.
     ///   Used after cooldown period to convert deactivated stake to SOL.
-    ///   User receives full stake balance (payer's rent contribution compensates for reduced split).
     ///
     ///   0. `[w]` User stake account (must be user stake PDA, fully deactivated)
     ///   1. `[w]` Recipient account for withdrawn lamports (must be session user)
@@ -2883,7 +2883,7 @@ pub fn withdraw_stake_with_session(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     program_signer: &Pubkey,
-    payer: &Pubkey,
+    reserve_stake: &Pubkey,
     pool_tokens_in: u64,
     minimum_lamports_out: u64,
     user_stake_seed: u64,
@@ -2904,7 +2904,8 @@ pub fn withdraw_stake_with_session(
         AccountMeta::new_readonly(stake::program::id(), false),
         AccountMeta::new_readonly(*program_signer, false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new(*payer, true),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
     ];
 
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawStakeWithSession {
@@ -2937,7 +2938,6 @@ pub fn withdraw_from_stake_account_with_session(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*session_signer, true),
-        AccountMeta::new_readonly(stake::program::id(), false),
     ];
 
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawFromStakeAccountWithSession {

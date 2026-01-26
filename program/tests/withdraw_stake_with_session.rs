@@ -238,7 +238,7 @@ async fn success_withdraw_stake_with_session(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &token_program_id,
         &program_signer,
-        &context.payer.pubkey(), // payer for rent
+        &stake_pool_accounts.reserve_stake.pubkey(),
         pool_tokens_to_withdraw,
         0, // minimum_lamports_out
         user_stake_seed,
@@ -349,7 +349,7 @@ async fn success_withdraw_from_stake_account_with_session(token_program_id: Pubk
         &stake_pool_accounts.pool_mint.pubkey(),
         &token_program_id,
         &program_signer,
-        &context.payer.pubkey(), // payer for rent
+        &stake_pool_accounts.reserve_stake.pubkey(),
         pool_tokens_to_withdraw,
         0,
         user_stake_seed,
@@ -490,7 +490,7 @@ async fn fail_withdraw_from_wrong_user_stake_account(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &token_program_id,
         &program_signer,
-        &context.payer.pubkey(), // payer for rent
+        &stake_pool_accounts.reserve_stake.pubkey(),
         pool_tokens_to_withdraw,
         0,
         user_stake_seed,
@@ -570,7 +570,7 @@ async fn fail_withdraw_to_different_user_wallet(token_program_id: Pubkey) {
         &stake_pool_accounts.pool_mint.pubkey(),
         &token_program_id,
         &program_signer,
-        &context.payer.pubkey(), // payer for rent
+        &stake_pool_accounts.reserve_stake.pubkey(),
         pool_tokens_to_withdraw,
         0,
         user_stake_seed,

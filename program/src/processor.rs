@@ -3308,15 +3308,15 @@ impl Processor {
         };
 
         // WithdrawStakeWithSession path - create user stake account PDA
-        // Tuple: (user_pubkey, is_user_payer, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports, required_rent)
-        let session_pda_info: Option<(Pubkey, bool, u8, AccountInfo, AccountInfo, u64, u64)> =
+        // Tuple: (user_pubkey, program_signer_bump, program_signer_info, signer_or_session_info, split_lamports)
+        let session_pda_info: Option<(Pubkey, u8, AccountInfo, AccountInfo, u64)> =
             if let Some(seed) = user_stake_seed {
                 use crate::USER_STAKE_SEED_PREFIX;
                 use fogo_sessions_sdk::session::Session;
                 use fogo_sessions_sdk::token::PROGRAM_SIGNER_SEED;
 
                 // NOTE: Session-based withdrawals cannot be used for validator removal
-                // because the split amount is reduced by stake rent (funded by payer),
+                // because the split amount is reduced by stake rent,
                 // which would leave residual lamports in the validator stake account.
                 if let Some((_, StakeWithdrawSource::ValidatorRemoval)) = &validator_list_item_info
                 {
@@ -3326,13 +3326,14 @@ impl Processor {
 
                 let program_signer_info = next_account_info(account_info_iter)?;
                 let system_program_info = next_account_info(account_info_iter)?;
-                let payer_info = next_account_info(account_info_iter)?;
+                let reserve_stake_info = next_account_info(account_info_iter)?;
+                let stake_history_info = next_account_info(account_info_iter)?;
 
                 check_system_program(system_program_info.key)?;
 
-                if !payer_info.is_signer {
-                    msg!("Payer must be a signer");
-                    return Err(ProgramError::MissingRequiredSignature);
+                if stake_pool.reserve_stake != *reserve_stake_info.key {
+                    msg!("Invalid reserve stake account");
+                    return Err(StakePoolError::InvalidProgramAddress.into());
                 }
 
                 let (expected_program_signer, program_signer_bump) =
@@ -3380,15 +3381,6 @@ impl Processor {
                 // Only fund the missing rent (account may already have some lamports)
                 let required_rent = stake_rent.saturating_sub(stake_split_to.lamports());
 
-                if required_rent > 0 && payer_info.lamports() < required_rent {
-                    msg!(
-                        "Payer has insufficient funds for rent. Required: {}, available: {}",
-                        required_rent,
-                        payer_info.lamports()
-                    );
-                    return Err(ProgramError::InsufficientFunds);
-                }
-
                 let stake_pda_seeds: &[&[u8]] = &[
                     USER_STAKE_SEED_PREFIX,
                     user_pubkey.as_ref(),
@@ -3398,41 +3390,40 @@ impl Processor {
 
                 create_stake_account(stake_split_to.clone(), stake_pda_seeds, stake_space)?;
 
-                // Fund the PDA with only the missing rent from payer
+                // Fund rent from reserve stake
                 if required_rent > 0 {
-                    invoke(
-                        &system_instruction::transfer(
-                            payer_info.key,
-                            stake_split_to.key,
-                            required_rent,
-                        ),
-                        &[
-                            payer_info.clone(),
-                            stake_split_to.clone(),
-                            system_program_info.clone(),
-                        ],
+                    if required_rent >= reserve_stake_info.lamports() {
+                        return Err(StakePoolError::ReserveDepleted.into());
+                    }
+                    Self::stake_withdraw(
+                        stake_pool_info.key,
+                        reserve_stake_info.clone(),
+                        withdraw_authority_info.clone(),
+                        AUTHORITY_WITHDRAW,
+                        stake_pool.stake_withdraw_bump_seed,
+                        stake_split_to.clone(),
+                        clock_info.clone(),
+                        stake_history_info.clone(),
+                        required_rent,
                     )?;
                 }
 
                 // Split is reduced by rent; stake balance = rent + split = withdraw_lamports
                 let split_lamports = withdraw_lamports.saturating_sub(stake_rent);
-                let is_user_payer = *payer_info.key == user_pubkey;
 
                 Some((
                     user_pubkey,
-                    is_user_payer,
                     program_signer_bump,
                     program_signer_info.clone(),
                     signer_or_session_info.clone(),
                     split_lamports,
-                    required_rent,
                 ))
             } else {
                 None
             };
 
         let actual_split_amount =
-            if let Some((_, _, _, _, _, split_lamports, _)) = &session_pda_info {
+            if let Some((_, _, _, _, split_lamports)) = &session_pda_info {
                 *split_lamports
             } else {
                 withdraw_lamports
@@ -3451,12 +3442,10 @@ impl Processor {
         // WithdrawStakeWithSession path - use session for token ops, set PDA as its own authority
         if let Some((
             user_pubkey,
-            is_user_payer,
             program_signer_bump,
             program_signer_info,
             signer_or_session_info,
-            split_lamports,
-            required_rent,
+            _split_lamports,
         )) = session_pda_info
         {
             use fogo_sessions_sdk::token::instruction::{burn, transfer_checked};
@@ -3470,14 +3459,6 @@ impl Processor {
                 msg!("`burn_from_pool` is not owned by the session user");
                 return Err(ProgramError::InvalidAccountData);
             }
-
-            let pool_tokens_burnt = stake_pool
-                .calc_pool_tokens_for_deposit(if is_user_payer {
-                    split_lamports
-                } else {
-                    split_lamports.saturating_add(required_rent)
-                })
-                .ok_or(StakePoolError::CalculationFailure)?;
 
             let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[program_signer_bump]];
 
@@ -3545,31 +3526,31 @@ impl Processor {
                 clock_info.clone(),
             )?;
 
-            // Update stake pool: only split_lamports left the pool
+            // Update stake pool: withdraw_lamports left the pool (split from validator + rent from reserve)
             stake_pool.pool_token_supply = stake_pool
                 .pool_token_supply
                 .checked_sub(pool_tokens_burnt)
                 .ok_or(StakePoolError::CalculationFailure)?;
             stake_pool.total_lamports = stake_pool
                 .total_lamports
-                .checked_sub(split_lamports)
+                .checked_sub(withdraw_lamports)
                 .ok_or(StakePoolError::CalculationFailure)?;
             borsh::to_writer(&mut stake_pool_info.data.borrow_mut()[..], &stake_pool)?;
 
-            // Update validator list
+            // Update validator list (only split_lamports came from the validator stake)
             if let Some((validator_list_item, withdraw_source)) = validator_list_item_info {
                 match withdraw_source {
                     StakeWithdrawSource::Active => {
                         validator_list_item.active_stake_lamports =
                             u64::from(validator_list_item.active_stake_lamports)
-                                .checked_sub(split_lamports)
+                                .checked_sub(actual_split_amount)
                                 .ok_or(StakePoolError::CalculationFailure)?
                                 .into()
                     }
                     StakeWithdrawSource::Transient => {
                         validator_list_item.transient_stake_lamports =
                             u64::from(validator_list_item.transient_stake_lamports)
-                                .checked_sub(split_lamports)
+                                .checked_sub(actual_split_amount)
                                 .ok_or(StakePoolError::CalculationFailure)?
                                 .into()
                     }
@@ -4417,6 +4398,16 @@ impl Processor {
             ],
             &[stake_pda_seeds],
         )?;
+
+        // On full withdrawal, assign stake account to system program to prevent
+        // account revival attacks.
+        if withdraw_amount == stake_balance {
+            invoke_signed(
+                &system_instruction::assign(stake_account_info.key, &system_program::id()),
+                &[stake_account_info.clone()],
+                &[stake_pda_seeds],
+            )?;
+        }
 
         Ok(())
     }
