@@ -3422,12 +3422,11 @@ impl Processor {
                 None
             };
 
-        let actual_split_amount =
-            if let Some((_, _, _, _, split_lamports)) = &session_pda_info {
-                *split_lamports
-            } else {
-                withdraw_lamports
-            };
+        let actual_split_amount = if let Some((_, _, _, _, split_lamports)) = &session_pda_info {
+            *split_lamports
+        } else {
+            withdraw_lamports
+        };
 
         Self::stake_split(
             stake_pool_info.key,
