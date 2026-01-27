@@ -44,6 +44,24 @@ export interface ValidatorAccount {
   lamports: BN
 }
 
+export interface PrepareWithdrawResult {
+  withdrawAccounts: WithdrawAccount[]
+  /** Pool tokens that will be withdrawn via delayed unstake */
+  delayedAmount: BN
+  /** Pool tokens remaining that need instant unstake */
+  remainingAmount: BN
+}
+
+/** Pre-fetched data to avoid duplicate RPC calls */
+export interface PrepareWithdrawPrefetchedData {
+  /** Raw validator list account data from getAccountInfo */
+  validatorListData: Buffer | null
+  /** Rent exemption for stake accounts in lamports */
+  minBalanceForRentExemption: number
+  /** Minimum stake delegation in lamports */
+  stakeMinimumDelegation: number
+}
+
 export async function prepareWithdrawAccounts(
   connection: Connection,
   stakePool: StakePool,
@@ -51,21 +69,60 @@ export async function prepareWithdrawAccounts(
   amount: BN,
   compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number,
   skipFee?: boolean,
-): Promise<WithdrawAccount[]> {
+  allowPartial?: boolean,
+  prefetchedData?: PrepareWithdrawPrefetchedData,
+): Promise<WithdrawAccount[]>
+export async function prepareWithdrawAccounts(
+  connection: Connection,
+  stakePool: StakePool,
+  stakePoolAddress: PublicKey,
+  amount: BN,
+  compareFn: ((a: ValidatorAccount, b: ValidatorAccount) => number) | undefined,
+  skipFee: boolean | undefined,
+  allowPartial: true,
+  prefetchedData?: PrepareWithdrawPrefetchedData,
+): Promise<PrepareWithdrawResult>
+export async function prepareWithdrawAccounts(
+  connection: Connection,
+  stakePool: StakePool,
+  stakePoolAddress: PublicKey,
+  amount: BN,
+  compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number,
+  skipFee?: boolean,
+  allowPartial?: boolean,
+  prefetchedData?: PrepareWithdrawPrefetchedData,
+): Promise<WithdrawAccount[] | PrepareWithdrawResult> {
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
-  const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList)
-  const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList
+
+  // Use prefetched data if available, otherwise fetch from RPC
+  let validatorListData: Buffer | null
+  let minBalanceForRentExemption: number
+  let stakeMinimumDelegation: number
+
+  if (prefetchedData) {
+    validatorListData = prefetchedData.validatorListData
+    minBalanceForRentExemption = prefetchedData.minBalanceForRentExemption
+    stakeMinimumDelegation = prefetchedData.stakeMinimumDelegation
+  } else {
+    const [validatorListAcc, rentExemption, stakeMinimumDelegationResponse] = await Promise.all([
+      connection.getAccountInfo(stakePool.validatorList),
+      connection.getMinimumBalanceForRentExemption(StakeProgram.space),
+      connection.getStakeMinimumDelegation(),
+    ])
+    validatorListData = validatorListAcc?.data ?? null
+    minBalanceForRentExemption = rentExemption
+    stakeMinimumDelegation = Number(stakeMinimumDelegationResponse.value)
+  }
+
+  if (!validatorListData) {
+    throw new Error('No staked funds available for delayed unstake. Use instant unstake instead.')
+  }
+
+  const validatorList = ValidatorListLayout.decode(validatorListData) as ValidatorList
 
   if (!validatorList?.validators || validatorList?.validators.length === 0) {
     throw new Error('No staked funds available for delayed unstake. Use instant unstake instead.')
   }
-
-  const minBalanceForRentExemption = await connection.getMinimumBalanceForRentExemption(
-    StakeProgram.space,
-  )
-  // Fetch stake minimum delegation from chain
-  const stakeMinimumDelegationResponse = await connection.getStakeMinimumDelegation()
-  const stakeMinimumDelegation = Number(stakeMinimumDelegationResponse.value)
 
   // minBalance = rent + max(stake_minimum_delegation, MINIMUM_ACTIVE_STAKE)
   const minimumDelegation = Math.max(stakeMinimumDelegation, MINIMUM_ACTIVE_STAKE)
@@ -191,10 +248,26 @@ export async function prepareWithdrawAccounts(
 
   // Not enough stake to withdraw the specified amount
   if (remainingAmount.gt(new BN(0))) {
+    if (allowPartial) {
+      const delayedAmount = amount.sub(remainingAmount)
+      return {
+        withdrawAccounts: withdrawFrom,
+        delayedAmount,
+        remainingAmount,
+      }
+    }
     const availableAmount = amount.sub(remainingAmount)
     throw new Error(
       `Not enough staked funds for delayed unstake. Requested ${lamportsToSol(amount)} iFOGO, but only ${lamportsToSol(availableAmount)} available. Use instant unstake for the remaining amount.`,
     )
+  }
+
+  if (allowPartial) {
+    return {
+      withdrawAccounts: withdrawFrom,
+      delayedAmount: amount,
+      remainingAmount: new BN(0),
+    }
   }
 
   return withdrawFrom

@@ -47,6 +47,7 @@ import {
   lamportsToSol,
   newStakeAccount,
   prepareWithdrawAccounts,
+  PrepareWithdrawPrefetchedData,
   solToLamports,
   ValidatorAccount,
 } from './utils'
@@ -1046,6 +1047,7 @@ export async function getUserStakeAccounts(
  * @param voteAccountAddress - Optional specific validator to withdraw from
  * @param minimumLamportsOut - Minimum lamports to receive (slippage protection)
  * @param validatorComparator - Optional comparator for validator selection
+ * @param allowPartial - If true, returns partial results instead of throwing when not enough stake available
  */
 export async function withdrawStakeWithSession(
   connection: Connection,
@@ -1058,15 +1060,32 @@ export async function withdrawStakeWithSession(
   voteAccountAddress?: PublicKey,
   minimumLamportsOut: number = 0,
   validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
+  allowPartial = false,
 ) {
-  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
+
+  // First fetch: get stake pool to know other account addresses
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePool = stakePoolAccount.account.data
   const poolTokens = solToLamports(amount)
   const poolAmount = new BN(poolTokens)
 
   const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
-  const tokenAccount = await getAccount(connection, poolTokenAccount)
+
+  // Second fetch: get ALL remaining data in parallel
+  const [tokenAccount, stakeAccountRentExemption, validatorListAcc, stakeMinimumDelegationResponse] = await Promise.all([
+    getAccount(connection, poolTokenAccount),
+    connection.getMinimumBalanceForRentExemption(StakeProgram.space),
+    connection.getAccountInfo(stakePool.validatorList),
+    connection.getStakeMinimumDelegation(),
+  ])
+
+  // Pre-fetch data to avoid duplicate RPC calls in prepareWithdrawAccounts
+  const prefetchedData: PrepareWithdrawPrefetchedData = {
+    validatorListData: validatorListAcc?.data ?? null,
+    minBalanceForRentExemption: stakeAccountRentExemption,
+    stakeMinimumDelegation: Number(stakeMinimumDelegationResponse.value),
+  }
 
   if (tokenAccount.amount < poolTokens) {
     throw new Error(
@@ -1085,10 +1104,9 @@ export async function withdrawStakeWithSession(
     stakePoolAddress,
   )
 
-  const stakeAccountRentExemption = await connection.getMinimumBalanceForRentExemption(StakeProgram.space)
-
   // Determine which stake accounts to withdraw from
   const withdrawAccounts: WithdrawAccount[] = []
+  let partialRemainingAmount: BN | undefined
 
   if (useReserve) {
     withdrawAccounts.push({
@@ -1131,16 +1149,33 @@ export async function withdrawStakeWithSession(
     })
   } else {
     // Get the list of accounts to withdraw from automatically
-    withdrawAccounts.push(
-      ...(await prepareWithdrawAccounts(
+    if (allowPartial) {
+      const result = await prepareWithdrawAccounts(
         connection,
         stakePool,
         stakePoolAddress,
         poolAmount,
         validatorComparator,
         poolTokenAccount.equals(stakePool.managerFeeAccount),
-      )),
-    )
+        true,
+        prefetchedData,
+      )
+      withdrawAccounts.push(...result.withdrawAccounts)
+      partialRemainingAmount = result.remainingAmount
+    } else {
+      withdrawAccounts.push(
+        ...(await prepareWithdrawAccounts(
+          connection,
+          stakePool,
+          stakePoolAddress,
+          poolAmount,
+          validatorComparator,
+          poolTokenAccount.equals(stakePool.managerFeeAccount),
+          undefined,
+          prefetchedData,
+        )),
+      )
+    }
   }
 
   const instructions: TransactionInstruction[] = []
@@ -1195,6 +1230,7 @@ export async function withdrawStakeWithSession(
     instructions,
     stakeAccountPubkeys,
     userStakeSeeds,
+    remainingPoolTokens: partialRemainingAmount ? lamportsToSol(partialRemainingAmount) : 0,
   }
 }
 
