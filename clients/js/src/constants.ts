@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer'
-import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
+import { PublicKey } from '@solana/web3.js'
 
 // Public key that identifies the metadata program.
 export const METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s')
@@ -27,4 +27,4 @@ export const USER_STAKE_SEED_PREFIX = Buffer.from('user_stake')
 
 // Minimum amount of staked SOL required in a validator stake account to allow
 // for merges without a mismatch on credits observed
-export const MINIMUM_ACTIVE_STAKE = LAMPORTS_PER_SOL
+export const MINIMUM_ACTIVE_STAKE = 1_000_000

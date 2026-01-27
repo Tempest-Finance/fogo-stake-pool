@@ -1034,13 +1034,12 @@ export async function getUserStakeAccounts(
  * Withdraws stake from a stake pool using a Fogo session.
  *
  * The on-chain program creates stake account PDAs. The rent for these accounts
- * is paid by the payer (typically the paymaster), not deducted from the user's withdrawal.
+ * is funded from the reserve stake.
  *
  * @param connection - Solana connection
  * @param stakePoolAddress - The stake pool to withdraw from
  * @param signerOrSession - The session signer public key
  * @param userPubkey - User's wallet (used for PDA derivation and token ownership)
- * @param payer - Payer for stake account rent (typically paymaster)
  * @param amount - Amount of pool tokens to withdraw
  * @param userStakeSeedStart - Starting seed for user stake PDA derivation (default: 0)
  * @param useReserve - Whether to withdraw from reserve (default: false)
@@ -1053,7 +1052,6 @@ export async function withdrawStakeWithSession(
   stakePoolAddress: PublicKey,
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
-  payer: PublicKey,
   amount: number,
   userStakeSeedStart: number = 0,
   useReserve = false,
@@ -1169,7 +1167,7 @@ export async function withdrawStakeWithSession(
     stakeAccountPubkeys.push(stakeReceiverPubkey)
     userStakeSeeds.push(userStakeSeed)
 
-    // The on-chain program creates the stake account PDA and rent is paid by payer.
+    // The on-chain program creates the stake account PDA and rent is funded from reserve.
     instructions.push(
       StakePoolInstruction.withdrawStakeWithSession({
         programId: stakePoolProgramId,
@@ -1184,7 +1182,7 @@ export async function withdrawStakeWithSession(
         poolMint: stakePool.poolMint,
         tokenProgramId: stakePool.tokenProgramId,
         programSigner,
-        payer,
+        reserveStake: stakePool.reserveStake,
         poolTokensIn: withdrawAccount.poolAmount.toNumber(),
         minimumLamportsOut,
         userStakeSeed,

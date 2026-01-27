@@ -38,7 +38,7 @@ export async function getValidatorListAccount(connection: Connection, pubkey: Pu
 }
 
 export interface ValidatorAccount {
-  type: 'preferred' | 'active' | 'transient' | 'reserve'
+  type: 'preferred' | 'active' | 'transient'
   voteAddress?: PublicKey | undefined
   stakeAddress: PublicKey
   lamports: BN
@@ -57,22 +57,41 @@ export async function prepareWithdrawAccounts(
   const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList
 
   if (!validatorList?.validators || validatorList?.validators.length === 0) {
-    throw new Error('No accounts found')
+    throw new Error('No staked funds available for delayed unstake. Use instant unstake instead.')
   }
 
   const minBalanceForRentExemption = await connection.getMinimumBalanceForRentExemption(
     StakeProgram.space,
   )
-  const minBalance = new BN(minBalanceForRentExemption + MINIMUM_ACTIVE_STAKE)
+  // Fetch stake minimum delegation from chain
+  const stakeMinimumDelegationResponse = await connection.getStakeMinimumDelegation()
+  const stakeMinimumDelegation = Number(stakeMinimumDelegationResponse.value)
 
-  let accounts = [] as Array<{
-    type: 'preferred' | 'active' | 'transient' | 'reserve'
-    voteAddress?: PublicKey | undefined
-    stakeAddress: PublicKey
-    lamports: BN
-  }>
+  // minBalance = rent + max(stake_minimum_delegation, MINIMUM_ACTIVE_STAKE)
+  const minimumDelegation = Math.max(stakeMinimumDelegation, MINIMUM_ACTIVE_STAKE)
+  const minBalance = new BN(minBalanceForRentExemption + minimumDelegation)
 
-  // Prepare accounts
+  // Threshold for has_active_stake check (ceiling division for lamports_per_pool_token)
+  const lamportsPerPoolToken = stakePool.totalLamports
+    .add(stakePool.poolTokenSupply)
+    .sub(new BN(1))
+    .div(stakePool.poolTokenSupply)
+  const minimumLamportsWithTolerance = minBalance.add(lamportsPerPoolToken)
+
+  const hasActiveStake = validatorList.validators.some(
+    v => v.status === ValidatorStakeInfoStatus.Active
+      && v.activeStakeLamports.gt(minimumLamportsWithTolerance),
+  )
+  const hasTransientStake = validatorList.validators.some(
+    v => v.status === ValidatorStakeInfoStatus.Active
+      && v.transientStakeLamports.gt(minimumLamportsWithTolerance),
+  )
+
+  // ValidatorRemoval mode: no validator above threshold
+  const isValidatorRemovalMode = !hasActiveStake && !hasTransientStake
+
+  let accounts: ValidatorAccount[] = []
+
   for (const validator of validatorList.validators) {
     if (validator.status !== ValidatorStakeInfoStatus.Active) {
       continue
@@ -84,9 +103,11 @@ export async function prepareWithdrawAccounts(
       stakePoolAddress,
     )
 
-    // For active stake accounts, subtract the minimum balance that must remain
-    // to allow for merges and maintain rent exemption
-    const availableActiveLamports = validator.activeStakeLamports.sub(minBalance)
+    // ValidatorRemoval: full balance available; Normal: leave minBalance
+    const availableActiveLamports = isValidatorRemovalMode
+      ? validator.activeStakeLamports
+      : validator.activeStakeLamports.sub(minBalance)
+
     if (availableActiveLamports.gt(new BN(0))) {
       const isPreferred = stakePool?.preferredWithdrawValidatorVoteAddress?.equals(
         validator.voteAccountAddress,
@@ -99,8 +120,11 @@ export async function prepareWithdrawAccounts(
       })
     }
 
-    const transientStakeLamports = validator.transientStakeLamports.sub(minBalance)
-    if (transientStakeLamports.gt(new BN(0))) {
+    const availableTransientLamports = isValidatorRemovalMode
+      ? validator.transientStakeLamports
+      : validator.transientStakeLamports.sub(minBalance)
+
+    if (availableTransientLamports.gt(new BN(0))) {
       const transientStakeAccountAddress = await findTransientStakeProgramAddress(
         stakePoolProgramId,
         validator.voteAccountAddress,
@@ -111,23 +135,13 @@ export async function prepareWithdrawAccounts(
         type: 'transient',
         voteAddress: validator.voteAccountAddress,
         stakeAddress: transientStakeAccountAddress,
-        lamports: transientStakeLamports,
+        lamports: availableTransientLamports,
       })
     }
   }
 
   // Sort from highest to lowest balance
   accounts = accounts.sort(compareFn || ((a, b) => b.lamports.sub(a.lamports).toNumber()))
-
-  const reserveStake = await connection.getAccountInfo(stakePool.reserveStake)
-  const reserveStakeBalance = new BN((reserveStake?.lamports ?? 0) - minBalanceForRentExemption)
-  if (reserveStakeBalance.gt(new BN(0))) {
-    accounts.push({
-      type: 'reserve',
-      stakeAddress: stakePool.reserveStake,
-      lamports: reserveStakeBalance,
-    })
-  }
 
   // Prepare the list of accounts to withdraw from
   const withdrawFrom: WithdrawAccount[] = []
@@ -139,14 +153,10 @@ export async function prepareWithdrawAccounts(
     denominator: fee.denominator,
   }
 
-  for (const type of ['preferred', 'active', 'transient', 'reserve']) {
+  for (const type of ['preferred', 'active', 'transient']) {
     const filteredAccounts = accounts.filter(a => a.type === type)
 
     for (const { stakeAddress, voteAddress, lamports } of filteredAccounts) {
-      if (lamports.lte(minBalance) && type === 'transient') {
-        continue
-      }
-
       let availableForWithdrawal = calcPoolTokensForDeposit(stakePool, lamports)
 
       if (!skipFee && !inverseFee.numerator.isZero()) {
@@ -155,12 +165,17 @@ export async function prepareWithdrawAccounts(
           .div(inverseFee.numerator)
       }
 
+      // In ValidatorRemoval mode, must withdraw full validator balance (no partial)
+      // Skip if remaining amount is less than full validator balance
+      if (isValidatorRemovalMode && remainingAmount.lt(availableForWithdrawal)) {
+        continue
+      }
+
       const poolAmount = BN.min(availableForWithdrawal, remainingAmount)
       if (poolAmount.lte(new BN(0))) {
         continue
       }
 
-      // Those accounts will be withdrawn completely with `claim` instruction
       withdrawFrom.push({ stakeAddress, voteAddress, poolAmount })
       remainingAmount = remainingAmount.sub(poolAmount)
 
@@ -176,10 +191,9 @@ export async function prepareWithdrawAccounts(
 
   // Not enough stake to withdraw the specified amount
   if (remainingAmount.gt(new BN(0))) {
+    const availableAmount = amount.sub(remainingAmount)
     throw new Error(
-      `No stake accounts found in this pool with enough balance to withdraw ${lamportsToSol(
-        amount,
-      )} pool tokens.`,
+      `Not enough staked funds for delayed unstake. Requested ${lamportsToSol(amount)} iFOGO, but only ${lamportsToSol(availableAmount)} available. Use instant unstake for the remaining amount.`,
     )
   }
 
