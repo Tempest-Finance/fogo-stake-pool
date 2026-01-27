@@ -3563,7 +3563,16 @@ impl Processor {
                                 .into()
                     }
                     StakeWithdrawSource::ValidatorRemoval => {
-                        validator_list_item.active_stake_lamports = 0.into();
+                        validator_list_item.active_stake_lamports =
+                            u64::from(validator_list_item.active_stake_lamports)
+                                .checked_sub(actual_split_amount)
+                                .ok_or(StakePoolError::CalculationFailure)?
+                                .into();
+                        if u64::from(validator_list_item.active_stake_lamports) != 0 {
+                            msg!("Attempting to remove a validator from the pool, but withdrawal leaves {} lamports, update the pool to merge any unaccounted lamports",
+                                u64::from(validator_list_item.active_stake_lamports));
+                            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+                        }
                         validator_list_item.status = StakeStatus::ReadyForRemoval.into();
                     }
                 }
