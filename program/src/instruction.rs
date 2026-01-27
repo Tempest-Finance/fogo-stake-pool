@@ -829,6 +829,7 @@ pub enum StakePoolInstruction {
     ///   2. `[]` Clock sysvar
     ///   3. `[]` Stake history sysvar
     ///   4. `[s]` Signer or Session (stake authority)
+    ///   5. `[]` Stake program
     WithdrawFromStakeAccountWithSession {
         /// Amount of lamports to withdraw (u64::MAX for full withdrawal)
         lamports: u64,
@@ -2938,6 +2939,7 @@ pub fn withdraw_from_stake_account_with_session(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*session_signer, true),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
 
     let data = borsh::to_vec(&StakePoolInstruction::WithdrawFromStakeAccountWithSession {
