@@ -3390,30 +3390,24 @@ impl Processor {
                     return Err(ProgramError::IllegalOwner);
                 }
 
-                // Only fund the missing rent (account may already have some lamports)
-                let required_rent = stake_rent.saturating_sub(stake_split_to.lamports());
-
                 let split_lamports = if is_validator_removal {
                     // Full balance includes rent, no additional funding needed
                     withdraw_lamports
                 } else {
-                    // Fund rent from reserve
-                    if required_rent > 0 {
-                        if required_rent >= reserve_stake_info.lamports() {
-                            return Err(StakePoolError::ReserveDepleted.into());
-                        }
-                        Self::stake_withdraw(
-                            stake_pool_info.key,
-                            reserve_stake_info.clone(),
-                            withdraw_authority_info.clone(),
-                            AUTHORITY_WITHDRAW,
-                            stake_pool.stake_withdraw_bump_seed,
-                            stake_split_to.clone(),
-                            clock_info.clone(),
-                            stake_history_info.clone(),
-                            required_rent,
-                        )?;
+                    if stake_rent >= reserve_stake_info.lamports() {
+                        return Err(StakePoolError::ReserveDepleted.into());
                     }
+                    Self::stake_withdraw(
+                        stake_pool_info.key,
+                        reserve_stake_info.clone(),
+                        withdraw_authority_info.clone(),
+                        AUTHORITY_WITHDRAW,
+                        stake_pool.stake_withdraw_bump_seed,
+                        stake_split_to.clone(),
+                        clock_info.clone(),
+                        stake_history_info.clone(),
+                        stake_rent,
+                    )?;
                     withdraw_lamports.saturating_sub(stake_rent)
                 };
 
@@ -3510,15 +3504,24 @@ impl Processor {
                 )?;
             }
 
-            // Immediately deactivate the stake so user only needs to wait for cooldown
-            Self::stake_deactivate(
-                stake_split_to.clone(),
-                clock_info.clone(),
-                withdraw_authority_info.clone(),
-                stake_pool_info.key,
-                AUTHORITY_WITHDRAW,
-                stake_pool.stake_withdraw_bump_seed,
+            // Only deactivate if the stake is active and not yet deactivated.
+            // stake_deactivate fails with AlreadyDeactivated if called on reserve/transient stake.
+            let split_to_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
+                &stake_split_to.data.borrow(),
             )?;
+            if let stake::state::StakeStateV2::Stake(_meta, stake, _) = split_to_state {
+                if stake.delegation.deactivation_epoch == Epoch::MAX {
+                    // Stake is active and not yet deactivated - deactivate it now
+                    Self::stake_deactivate(
+                        stake_split_to.clone(),
+                        clock_info.clone(),
+                        withdraw_authority_info.clone(),
+                        stake_pool_info.key,
+                        AUTHORITY_WITHDRAW,
+                        stake_pool.stake_withdraw_bump_seed,
+                    )?;
+                }
+            }
 
             // Set stake authority to the PDA itself so it can sign the later withdrawal
             Self::stake_authorize_signed(
