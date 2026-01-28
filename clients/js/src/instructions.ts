@@ -426,8 +426,8 @@ export type WithdrawStakeWithSessionParams = {
   tokenProgramId: PublicKey
   /** The program signer PDA derived from PROGRAM_SIGNER_SEED */
   programSigner: PublicKey
-  /** The payer for stake account rent (typically the paymaster) */
-  payer: PublicKey
+  /** Reserve stake account for rent funding */
+  reserveStake: PublicKey
   poolTokensIn: number
   minimumLamportsOut: number
   /** Seed used to derive the user stake PDA */
@@ -1222,7 +1222,7 @@ export class StakePoolInstruction {
 
   /**
    * Creates a transaction instruction to withdraw stake from a stake pool using a Fogo session.
-   * The stake account is created as a PDA and rent is paid by the payer (typically paymaster).
+   * The stake account is created as a PDA and rent is funded from the reserve.
    */
   static withdrawStakeWithSession(params: WithdrawStakeWithSessionParams): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStakeWithSession
@@ -1238,17 +1238,19 @@ export class StakePoolInstruction {
       { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: params.stakeToSplit, isSigner: false, isWritable: true },
       { pubkey: params.stakeToReceive, isSigner: false, isWritable: true },
-      { pubkey: params.sessionSigner, isSigner: true, isWritable: false }, // user_stake_authority_info (signer_or_session)
-      { pubkey: params.sessionSigner, isSigner: false, isWritable: false }, // user_transfer_authority_info (not used in session path)
+      { pubkey: params.sessionSigner, isSigner: true, isWritable: false }, // user_stake_authority_info
+      { pubkey: params.sessionSigner, isSigner: false, isWritable: false }, // user_transfer_authority_info (unused in session path)
       { pubkey: params.burnFromPool, isSigner: false, isWritable: true },
       { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
       { pubkey: params.poolMint, isSigner: false, isWritable: true },
       { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
       { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+      // Session-specific accounts
       { pubkey: params.programSigner, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: params.payer, isSigner: true, isWritable: true },
+      { pubkey: params.reserveStake, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
     ]
 
     return new TransactionInstruction({

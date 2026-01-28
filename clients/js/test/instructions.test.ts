@@ -22,14 +22,12 @@ import {
   removeValidatorFromPool,
   RemoveValidatorFromPoolParams,
   STAKE_POOL_INSTRUCTION_LAYOUTS,
+  STAKE_POOL_PROGRAM_ID,
   StakePoolInstruction,
+  StakePoolLayout,
   tokenMetadataLayout,
-  updatePoolTokenMetadata,
-  withdrawSol,
-  withdrawStake,
+  updatePoolTokenMetadata, ValidatorListLayout, withdrawSol, withdrawStake,
 } from '../src'
-import { STAKE_POOL_PROGRAM_ID } from '../src/constants'
-import { StakePoolLayout, ValidatorListLayout } from '../src/layouts'
 
 import { decodeData, findStakeProgramAddress } from '../src/utils'
 
@@ -55,6 +53,10 @@ describe('stakePoolProgram', () => {
   const connection = new Connection('http://127.0.0.1:8899')
 
   connection.getMinimumBalanceForRentExemption = jest.fn(async () => 10000)
+  connection.getStakeMinimumDelegation = jest.fn(async () => ({
+    context: { slot: 0 },
+    value: LAMPORTS_PER_SOL,
+  }))
 
   const stakePoolAddress = new PublicKey('SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr')
 
@@ -440,7 +442,7 @@ describe('stakePoolProgram', () => {
       })
       const res = await withdrawStake(connection, stakePoolAddress, tokenOwner, 1)
 
-      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4)
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(3)
       expect(res.instructions).toHaveLength(3)
       expect(res.signers).toHaveLength(2)
       expect(res.stakeReceiver).toEqual(undefined)

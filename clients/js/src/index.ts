@@ -47,6 +47,7 @@ import {
   lamportsToSol,
   newStakeAccount,
   prepareWithdrawAccounts,
+  PrepareWithdrawPrefetchedData,
   solToLamports,
   ValidatorAccount,
 } from './utils'
@@ -1034,41 +1035,57 @@ export async function getUserStakeAccounts(
  * Withdraws stake from a stake pool using a Fogo session.
  *
  * The on-chain program creates stake account PDAs. The rent for these accounts
- * is paid by the payer (typically the paymaster), not deducted from the user's withdrawal.
+ * is funded from the reserve stake.
  *
  * @param connection - Solana connection
  * @param stakePoolAddress - The stake pool to withdraw from
  * @param signerOrSession - The session signer public key
  * @param userPubkey - User's wallet (used for PDA derivation and token ownership)
- * @param payer - Payer for stake account rent (typically paymaster)
  * @param amount - Amount of pool tokens to withdraw
  * @param userStakeSeedStart - Starting seed for user stake PDA derivation (default: 0)
  * @param useReserve - Whether to withdraw from reserve (default: false)
  * @param voteAccountAddress - Optional specific validator to withdraw from
  * @param minimumLamportsOut - Minimum lamports to receive (slippage protection)
  * @param validatorComparator - Optional comparator for validator selection
+ * @param allowPartial - If true, returns partial results instead of throwing when not enough stake available
  */
 export async function withdrawStakeWithSession(
   connection: Connection,
   stakePoolAddress: PublicKey,
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
-  payer: PublicKey,
   amount: number,
   userStakeSeedStart: number = 0,
   useReserve = false,
   voteAccountAddress?: PublicKey,
   minimumLamportsOut: number = 0,
   validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
+  allowPartial = false,
 ) {
-  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
+
+  // First fetch: get stake pool to know other account addresses
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePool = stakePoolAccount.account.data
   const poolTokens = solToLamports(amount)
   const poolAmount = new BN(poolTokens)
 
   const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
-  const tokenAccount = await getAccount(connection, poolTokenAccount)
+
+  // Second fetch: get ALL remaining data in parallel
+  const [tokenAccount, stakeAccountRentExemption, validatorListAcc, stakeMinimumDelegationResponse] = await Promise.all([
+    getAccount(connection, poolTokenAccount),
+    connection.getMinimumBalanceForRentExemption(StakeProgram.space),
+    connection.getAccountInfo(stakePool.validatorList),
+    connection.getStakeMinimumDelegation(),
+  ])
+
+  // Pre-fetch data to avoid duplicate RPC calls in prepareWithdrawAccounts
+  const prefetchedData: PrepareWithdrawPrefetchedData = {
+    validatorListData: validatorListAcc?.data ?? null,
+    minBalanceForRentExemption: stakeAccountRentExemption,
+    stakeMinimumDelegation: Number(stakeMinimumDelegationResponse.value),
+  }
 
   if (tokenAccount.amount < poolTokens) {
     throw new Error(
@@ -1087,10 +1104,9 @@ export async function withdrawStakeWithSession(
     stakePoolAddress,
   )
 
-  const stakeAccountRentExemption = await connection.getMinimumBalanceForRentExemption(StakeProgram.space)
-
   // Determine which stake accounts to withdraw from
   const withdrawAccounts: WithdrawAccount[] = []
+  let partialRemainingAmount: BN | undefined
 
   if (useReserve) {
     withdrawAccounts.push({
@@ -1133,16 +1149,33 @@ export async function withdrawStakeWithSession(
     })
   } else {
     // Get the list of accounts to withdraw from automatically
-    withdrawAccounts.push(
-      ...(await prepareWithdrawAccounts(
+    if (allowPartial) {
+      const result = await prepareWithdrawAccounts(
         connection,
         stakePool,
         stakePoolAddress,
         poolAmount,
         validatorComparator,
         poolTokenAccount.equals(stakePool.managerFeeAccount),
-      )),
-    )
+        true,
+        prefetchedData,
+      )
+      withdrawAccounts.push(...result.withdrawAccounts)
+      partialRemainingAmount = result.remainingAmount
+    } else {
+      withdrawAccounts.push(
+        ...(await prepareWithdrawAccounts(
+          connection,
+          stakePool,
+          stakePoolAddress,
+          poolAmount,
+          validatorComparator,
+          poolTokenAccount.equals(stakePool.managerFeeAccount),
+          undefined,
+          prefetchedData,
+        )),
+      )
+    }
   }
 
   const instructions: TransactionInstruction[] = []
@@ -1169,7 +1202,7 @@ export async function withdrawStakeWithSession(
     stakeAccountPubkeys.push(stakeReceiverPubkey)
     userStakeSeeds.push(userStakeSeed)
 
-    // The on-chain program creates the stake account PDA and rent is paid by payer.
+    // The on-chain program creates the stake account PDA and rent is funded from reserve.
     instructions.push(
       StakePoolInstruction.withdrawStakeWithSession({
         programId: stakePoolProgramId,
@@ -1184,7 +1217,7 @@ export async function withdrawStakeWithSession(
         poolMint: stakePool.poolMint,
         tokenProgramId: stakePool.tokenProgramId,
         programSigner,
-        payer,
+        reserveStake: stakePool.reserveStake,
         poolTokensIn: withdrawAccount.poolAmount.toNumber(),
         minimumLamportsOut,
         userStakeSeed,
@@ -1197,6 +1230,7 @@ export async function withdrawStakeWithSession(
     instructions,
     stakeAccountPubkeys,
     userStakeSeeds,
+    remainingPoolTokens: partialRemainingAmount ? lamportsToSol(partialRemainingAmount) : 0,
   }
 }
 

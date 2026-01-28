@@ -1,6 +1,6 @@
 {
   "name": "@ignitionfi/fogo-stake-pool",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Fogo Stake Pool SDK",
   "contributors": [
     "Anza Maintainers <maintainers@anza.xyz>",
