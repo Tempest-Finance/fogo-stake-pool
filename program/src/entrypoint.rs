@@ -36,7 +36,7 @@ security_txt! {
     // Optional Fields
     preferred_languages: "en",
     source_code: "https://github.com/Tempest-Finance/fogo-stake-pool/tree/main/program",
-    source_revision: "e5a3dbec2549cf62b90b674fdedcfa94300ddbb1",
+    source_revision: "fabdb9796802bf67263ef0ac369e884f8c4c88fd",
     source_release: "stake-pool-v2.0.3",
     auditors: "https://github.com/Tempest-Finance/fogo-stake-pool/tree/main/audits,https://github.com/solana-labs/security-audits#stake-pool"
 }
