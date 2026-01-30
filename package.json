@@ -6,7 +6,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.2.0",
-    "@codama/renderers-js": "^1.5.5",
+    "@codama/renderers-js": "^1.6.0",
     "@codama/renderers-rust": "^1.2.9",
     "@iarna/toml": "^2.2.5",
     "codama": "^1.5",
