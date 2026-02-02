@@ -1,3 +1,4 @@
+import * as BufferLayout from '@solana/buffer-layout'
 import { PublicKey } from '@solana/web3.js'
 import BN from 'bn.js'
 import { blob, Layout as LayoutCls, offset, seq, struct, u8, u32 } from 'buffer-layout'
@@ -15,18 +16,22 @@ export interface Layout<T> {
   replicate: (name: string) => this
 }
 
-class BNLayout extends LayoutCls<BN> {
-  blob: Layout<Buffer>
+/**
+ * BN-based layout for data decoding using buffer-layout.
+ * Used for decoding on-chain account data (StakePool, ValidatorList, etc.)
+ */
+class BNDataLayout extends LayoutCls<BN> {
+  blobLayout: Layout<Buffer>
   signed: boolean
 
   constructor(span: number, signed: boolean, property?: string) {
     super(span, property)
-    this.blob = blob(span)
+    this.blobLayout = blob(span)
     this.signed = signed
   }
 
   decode(b: Buffer, offset = 0) {
-    const num = new BN(this.blob.decode(b, offset), 10, 'le')
+    const num = new BN(this.blobLayout.decode(b, offset), 10, 'le')
     if (this.signed) {
       return num.fromTwos(this.span * 8).clone()
     }
@@ -37,12 +42,60 @@ class BNLayout extends LayoutCls<BN> {
     if (this.signed) {
       src = src.toTwos(this.span * 8)
     }
-    return this.blob.encode(src.toArrayLike(Buffer, 'le', this.span), b, offset)
+    return this.blobLayout.encode(src.toArrayLike(Buffer, 'le', this.span), b, offset)
   }
 }
 
+/**
+ * Creates a u64 layout for data decoding (account layouts).
+ * Used in StakePoolLayout, ValidatorListLayout, etc.
+ */
 export function u64(property?: string): Layout<BN> {
-  return new BNLayout(8, false, property)
+  return new BNDataLayout(8, false, property)
+}
+
+/**
+ * BN-based layout for 64-bit unsigned integers using @solana/buffer-layout.
+ * Used for encoding instruction data with support for values > MAX_SAFE_INTEGER.
+ */
+class BNInstructionLayout extends BufferLayout.Layout<BN> {
+  blobLayout: BufferLayout.Blob
+  signed: boolean
+
+  constructor(span: number, signed: boolean, property?: string) {
+    super(span, property)
+    this.blobLayout = BufferLayout.blob(span)
+    this.signed = signed
+  }
+
+  decode(b: Uint8Array, offset = 0): BN {
+    const num = new BN(this.blobLayout.decode(b, offset), 10, 'le')
+    if (this.signed) {
+      return num.fromTwos(this.span * 8).clone()
+    }
+    return num
+  }
+
+  encode(src: BN, b: Uint8Array, offset = 0): number {
+    if (this.signed) {
+      src = src.toTwos(this.span * 8)
+    }
+    return this.blobLayout.encode(src.toArrayLike(Buffer, 'le', this.span), b, offset)
+  }
+
+  getSpan(_b?: Uint8Array, _offset?: number): number {
+    return this.span
+  }
+}
+
+/**
+ * Creates a u64 layout for instruction encoding.
+ * Properly handles BN values larger than Number.MAX_SAFE_INTEGER.
+ * Compatible with @solana/buffer-layout.struct().
+ */
+// eslint-disable-next-line ts/no-explicit-any
+export function u64Instruction(property?: string): any {
+  return new BNInstructionLayout(8, false, property)
 }
 
 class WrappedLayout<T, U> extends LayoutCls<U> {

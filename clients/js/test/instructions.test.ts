@@ -12,6 +12,8 @@ import {
   StakeProgram,
   SystemProgram,
 } from '@solana/web3.js'
+// @ts-expect-error ...
+import BN from 'bn.js'
 import {
   addValidatorToPool,
   AddValidatorToPoolParams,
@@ -166,7 +168,8 @@ describe('stakePoolProgram', () => {
     const decodedData = decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol, instruction.data)
 
     expect(decodedData.instruction).toEqual(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol.index)
-    expect(decodedData.lamports).toEqual(payload.lamports)
+    // decodedData.lamports is now a BN, so compare using BN
+    expect(new BN(decodedData.lamports).eq(new BN(payload.lamports))).toBe(true)
 
     payload.depositAuthority = Keypair.generate().publicKey
 

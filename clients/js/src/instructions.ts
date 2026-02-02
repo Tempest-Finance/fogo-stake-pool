@@ -10,6 +10,8 @@ import {
   SYSVAR_STAKE_HISTORY_PUBKEY,
   TransactionInstruction,
 } from '@solana/web3.js'
+import BN from 'bn.js'
+import { u64Instruction as u64 } from './codecs'
 import {
   DEVNET_STAKE_POOL_PROGRAM_ID,
   METADATA_MAX_NAME_LENGTH,
@@ -19,6 +21,58 @@ import {
   STAKE_POOL_PROGRAM_ID,
 } from './constants'
 import { decodeData, encodeData, InstructionType } from './utils'
+
+/**
+ * Type for amounts that can be converted to BN.
+ * Accepts number, bigint, BN, or string representations.
+ */
+export type AmountInput = number | bigint | BN | string
+
+/**
+ * Converts various numeric types to BN for safe large number handling.
+ * @internal
+ */
+function toBN(value: AmountInput): BN {
+  if (BN.isBN(value)) {
+    return value
+  }
+
+  if (typeof value === 'bigint') {
+    return new BN(value.toString())
+  }
+
+  if (typeof value === 'string') {
+    // Validate string is a valid non-negative integer
+    const trimmed = value.trim()
+    if (!/^\d+$/.test(trimmed)) {
+      throw new Error(`Invalid amount string: "${value}". Must be a non-negative integer.`)
+    }
+    return new BN(trimmed)
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error('Invalid amount: must be a finite number')
+    }
+    if (value < 0) {
+      throw new Error('Invalid amount: must be non-negative')
+    }
+    if (!Number.isInteger(value)) {
+      throw new Error('Invalid amount: must be an integer (lamports)')
+    }
+    // CRITICAL: Numbers > MAX_SAFE_INTEGER have already lost precision
+    // We throw an error instead of silently corrupting data
+    if (value > Number.MAX_SAFE_INTEGER) {
+      throw new Error(
+        `Amount ${value} exceeds Number.MAX_SAFE_INTEGER (9,007,199,254,740,991). `
+        + `Use BigInt or BN for large values to avoid precision loss.`,
+      )
+    }
+    return new BN(value)
+  }
+
+  throw new Error(`Invalid amount type: ${typeof value}`)
+}
 
 /**
  * An enumeration of valid StakePoolInstructionType's
@@ -48,8 +102,8 @@ export type StakePoolInstructionType
 
 const MOVE_STAKE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('instruction'),
-  BufferLayout.ns64('lamports'),
-  BufferLayout.ns64('transientStakeSeed'),
+  u64('lamports'),
+  u64('transientStakeSeed'),
 ])
 
 const UPDATE_VALIDATOR_LIST_BALANCE_LAYOUT = BufferLayout.struct<any>([
@@ -137,7 +191,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 10,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokens'),
+      u64('poolTokens'),
     ]),
   },
   /// Deposit SOL directly into the pool's reserve account. The output is a "pool" token
@@ -146,7 +200,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 14,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
+      u64('lamports'),
     ]),
   },
   /// Withdraw SOL directly from the pool's reserve account. Fails if the
@@ -155,25 +209,25 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 16,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokens'),
+      u64('poolTokens'),
     ]),
   },
   IncreaseAdditionalValidatorStake: {
     index: 19,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
-      BufferLayout.ns64('transientStakeSeed'),
-      BufferLayout.ns64('ephemeralStakeSeed'),
+      u64('lamports'),
+      u64('transientStakeSeed'),
+      u64('ephemeralStakeSeed'),
     ]),
   },
   DecreaseAdditionalValidatorStake: {
     index: 20,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
-      BufferLayout.ns64('transientStakeSeed'),
-      BufferLayout.ns64('ephemeralStakeSeed'),
+      u64('lamports'),
+      u64('transientStakeSeed'),
+      u64('ephemeralStakeSeed'),
     ]),
   },
   DecreaseValidatorStakeWithReserve: {
@@ -188,62 +242,62 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 23,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
+      u64('lamports'),
     ]),
   },
   WithdrawStakeWithSlippage: {
     index: 24,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokensIn'),
-      BufferLayout.ns64('minimumLamportsOut'),
+      u64('poolTokensIn'),
+      u64('minimumLamportsOut'),
     ]),
   },
   DepositSolWithSlippage: {
     index: 25,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
+      u64('lamports'),
     ]),
   },
   WithdrawSolWithSlippage: {
     index: 26,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
+      u64('lamports'),
     ]),
   },
   DepositWsolWithSession: {
     index: 27,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamportsIn'),
-      BufferLayout.ns64('minimumPoolTokensOut'),
+      u64('lamportsIn'),
+      u64('minimumPoolTokensOut'),
     ]),
   },
   WithdrawWsolWithSession: {
     index: 28,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokensIn'),
-      BufferLayout.ns64('minimumLamportsOut'),
+      u64('poolTokensIn'),
+      u64('minimumLamportsOut'),
     ]),
   },
   WithdrawStakeWithSession: {
     index: 29,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokensIn'),
-      BufferLayout.ns64('minimumLamportsOut'),
-      BufferLayout.ns64('userStakeSeed'),
+      u64('poolTokensIn'),
+      u64('minimumLamportsOut'),
+      u64('userStakeSeed'),
     ]),
   },
   WithdrawFromStakeAccountWithSession: {
     index: 30,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
-      BufferLayout.ns64('userStakeSeed'),
+      u64('lamports'),
+      u64('userStakeSeed'),
     ]),
   },
 })
@@ -296,9 +350,9 @@ export type DecreaseValidatorStakeParams = {
   validatorStake: PublicKey
   transientStake: PublicKey
   // Amount of lamports to split into the transient stake account
-  lamports: number
+  lamports: AmountInput
   // Seed to used to create the transient stake account
-  transientStakeSeed: number
+  transientStakeSeed: AmountInput
 }
 
 export interface DecreaseValidatorStakeWithReserveParams extends DecreaseValidatorStakeParams {
@@ -308,7 +362,7 @@ export interface DecreaseValidatorStakeWithReserveParams extends DecreaseValidat
 export interface DecreaseAdditionalValidatorStakeParams extends DecreaseValidatorStakeParams {
   reserveStake: PublicKey
   ephemeralStake: PublicKey
-  ephemeralStakeSeed: number
+  ephemeralStakeSeed: AmountInput
 }
 
 /**
@@ -325,14 +379,14 @@ export type IncreaseValidatorStakeParams = {
   validatorStake: PublicKey
   validatorVote: PublicKey
   // Amount of lamports to split into the transient stake account
-  lamports: number
+  lamports: AmountInput
   // Seed to used to create the transient stake account
-  transientStakeSeed: number
+  transientStakeSeed: AmountInput
 }
 
 export interface IncreaseAdditionalValidatorStakeParams extends IncreaseValidatorStakeParams {
   ephemeralStake: PublicKey
-  ephemeralStakeSeed: number
+  ephemeralStakeSeed: AmountInput
 }
 
 /**
@@ -368,7 +422,7 @@ export type WithdrawStakeParams = {
   sourcePoolAccount: PublicKey
   managerFeeAccount: PublicKey
   poolMint: PublicKey
-  poolTokens: number
+  poolTokens: AmountInput
 }
 
 /**
@@ -385,7 +439,7 @@ export type WithdrawSolParams = {
   solWithdrawAuthority?: PublicKey | undefined
   managerFeeAccount: PublicKey
   poolMint: PublicKey
-  poolTokens: number
+  poolTokens: AmountInput
 }
 
 /**
@@ -405,8 +459,8 @@ export type WithdrawWsolWithSessionParams = {
   wsolMint: PublicKey
   programSigner: PublicKey
   userWallet: PublicKey
-  poolTokensIn: number
-  minimumLamportsOut: number
+  poolTokensIn: AmountInput
+  minimumLamportsOut: AmountInput
   solWithdrawAuthority?: PublicKey
 }
 
@@ -428,10 +482,10 @@ export type WithdrawStakeWithSessionParams = {
   programSigner: PublicKey
   /** Reserve stake account for rent funding */
   reserveStake: PublicKey
-  poolTokensIn: number
-  minimumLamportsOut: number
+  poolTokensIn: AmountInput
+  minimumLamportsOut: AmountInput
   /** Seed used to derive the user stake PDA */
-  userStakeSeed: number
+  userStakeSeed: AmountInput
 }
 
 export type WithdrawFromStakeAccountWithSessionParams = {
@@ -443,9 +497,9 @@ export type WithdrawFromStakeAccountWithSessionParams = {
   /** The session signer (user or session) */
   sessionSigner: PublicKey
   /** Seed used to derive the user stake PDA */
-  userStakeSeed: number
-  /** Lamports to withdraw (use Number.MAX_SAFE_INTEGER for full withdrawal) */
-  lamports: number
+  userStakeSeed: AmountInput
+  /** Lamports to withdraw (use BigInt(Number.MAX_SAFE_INTEGER) for full withdrawal) */
+  lamports: AmountInput
 }
 
 /**
@@ -463,7 +517,7 @@ export type DepositSolParams = {
   managerFeeAccount: PublicKey
   referralPoolAccount: PublicKey
   poolMint: PublicKey
-  lamports: number
+  lamports: AmountInput
 }
 
 export type CreateTokenMetadataParams = {
@@ -710,7 +764,10 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.IncreaseValidatorStake
-    const data = encodeData(type, { lamports, transientStakeSeed })
+    const data = encodeData(type, {
+      lamports: toBN(lamports),
+      transientStakeSeed: toBN(transientStakeSeed),
+    })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -760,7 +817,11 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.IncreaseAdditionalValidatorStake
-    const data = encodeData(type, { lamports, transientStakeSeed, ephemeralStakeSeed })
+    const data = encodeData(type, {
+      lamports: toBN(lamports),
+      transientStakeSeed: toBN(transientStakeSeed),
+      ephemeralStakeSeed: toBN(ephemeralStakeSeed),
+    })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -804,7 +865,10 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseValidatorStake
-    const data = encodeData(type, { lamports, transientStakeSeed })
+    const data = encodeData(type, {
+      lamports: toBN(lamports),
+      transientStakeSeed: toBN(transientStakeSeed),
+    })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -847,7 +911,10 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseValidatorStakeWithReserve
-    const data = encodeData(type, { lamports, transientStakeSeed })
+    const data = encodeData(type, {
+      lamports: toBN(lamports),
+      transientStakeSeed: toBN(transientStakeSeed),
+    })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -893,7 +960,11 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseAdditionalValidatorStake
-    const data = encodeData(type, { lamports, transientStakeSeed, ephemeralStakeSeed })
+    const data = encodeData(type, {
+      lamports: toBN(lamports),
+      transientStakeSeed: toBN(transientStakeSeed),
+      ephemeralStakeSeed: toBN(ephemeralStakeSeed),
+    })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -983,7 +1054,7 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol
-    const data = encodeData(type, { lamports })
+    const data = encodeData(type, { lamports: toBN(lamports) })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: true },
@@ -1024,14 +1095,14 @@ export class StakePoolInstruction {
     tokenProgramId: PublicKey
     programId: PublicKey
     userWallet: PublicKey
-    lamportsIn: number
-    minimumPoolTokensOut: number
+    lamportsIn: AmountInput
+    minimumPoolTokensOut: AmountInput
     payer?: PublicKey
   }): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DepositWsolWithSession
     const data = encodeData(type, {
-      lamportsIn: params.lamportsIn,
-      minimumPoolTokensOut: params.minimumPoolTokensOut,
+      lamportsIn: toBN(params.lamportsIn),
+      minimumPoolTokensOut: toBN(params.minimumPoolTokensOut),
     })
 
     const keys = [
@@ -1093,7 +1164,7 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStake
-    const data = encodeData(type, { poolTokens })
+    const data = encodeData(type, { poolTokens: toBN(poolTokens) })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: true },
@@ -1137,7 +1208,7 @@ export class StakePoolInstruction {
     } = params
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawSol
-    const data = encodeData(type, { poolTokens })
+    const data = encodeData(type, { poolTokens: toBN(poolTokens) })
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: true },
@@ -1178,8 +1249,8 @@ export class StakePoolInstruction {
   ): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawWsolWithSession
     const data = encodeData(type, {
-      poolTokensIn: params.poolTokensIn,
-      minimumLamportsOut: params.minimumLamportsOut,
+      poolTokensIn: toBN(params.poolTokensIn),
+      minimumLamportsOut: toBN(params.minimumLamportsOut),
     })
 
     const keys = [
@@ -1227,9 +1298,9 @@ export class StakePoolInstruction {
   static withdrawStakeWithSession(params: WithdrawStakeWithSessionParams): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStakeWithSession
     const data = encodeData(type, {
-      poolTokensIn: params.poolTokensIn,
-      minimumLamportsOut: params.minimumLamportsOut,
-      userStakeSeed: params.userStakeSeed,
+      poolTokensIn: toBN(params.poolTokensIn),
+      minimumLamportsOut: toBN(params.minimumLamportsOut),
+      userStakeSeed: toBN(params.userStakeSeed),
     })
 
     const keys = [
@@ -1267,8 +1338,8 @@ export class StakePoolInstruction {
   static withdrawFromStakeAccountWithSession(params: WithdrawFromStakeAccountWithSessionParams): TransactionInstruction {
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawFromStakeAccountWithSession
     const data = encodeData(type, {
-      lamports: params.lamports,
-      userStakeSeed: params.userStakeSeed,
+      lamports: toBN(params.lamports),
+      userStakeSeed: toBN(params.userStakeSeed),
     })
 
     const keys = [

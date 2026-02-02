@@ -24,7 +24,7 @@ import {
   MINIMUM_ACTIVE_STAKE,
   STAKE_POOL_PROGRAM_ID,
 } from './constants'
-import { StakePoolInstruction } from './instructions'
+import { AmountInput, StakePoolInstruction } from './instructions'
 import {
   StakeAccount,
   StakePool,
@@ -304,8 +304,8 @@ export async function depositWsolWithSession(
   stakePoolAddress: PublicKey,
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
-  lamports: number,
-  minimumPoolTokensOut: number = 0,
+  lamports: AmountInput,
+  minimumPoolTokensOut: AmountInput = 0,
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
   depositAuthority?: PublicKey,
@@ -324,13 +324,22 @@ export async function depositWsolWithSession(
       'confirmed',
     )
     const wsolBalance = tokenAccountInfo
-      ? parseInt(tokenAccountInfo.value.amount)
-      : 0
+      ? BigInt(tokenAccountInfo.value.amount)
+      : BigInt(0)
 
-    if (wsolBalance < lamports) {
+    // Convert lamports to BigInt for comparison
+    const lamportsBigInt = typeof lamports === 'bigint'
+      ? lamports
+      : typeof lamports === 'string'
+        ? BigInt(lamports)
+        : BN.isBN(lamports)
+          ? BigInt(lamports.toString())
+          : BigInt(lamports)
+
+    if (wsolBalance < lamportsBigInt) {
       throw new Error(
         `Not enough WSOL to deposit into pool. Maximum deposit amount is ${lamportsToSol(
-          wsolBalance,
+          Number(wsolBalance),
         )} WSOL.`,
       )
     }
@@ -402,13 +411,23 @@ export async function depositSol(
   connection: Connection,
   stakePoolAddress: PublicKey,
   from: PublicKey,
-  lamports: number,
+  lamports: AmountInput,
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
   depositAuthority?: PublicKey,
 ) {
   const fromBalance = await connection.getBalance(from, 'confirmed')
-  if (fromBalance < lamports) {
+
+  // Convert lamports to BigInt for comparison
+  const lamportsBigInt = typeof lamports === 'bigint'
+    ? lamports
+    : typeof lamports === 'string'
+      ? BigInt(lamports)
+      : BN.isBN(lamports)
+        ? BigInt(lamports.toString())
+        : BigInt(lamports)
+
+  if (BigInt(fromBalance) < lamportsBigInt) {
     throw new Error(
       `Not enough SOL to deposit into pool. Maximum deposit amount is ${lamportsToSol(
         fromBalance,
@@ -433,7 +452,7 @@ export async function depositSol(
     SystemProgram.transfer({
       fromPubkey: from,
       toPubkey: userSolTransfer.publicKey,
-      lamports,
+      lamports: lamportsBigInt,
     }),
   )
 
@@ -1363,7 +1382,7 @@ export async function increaseValidatorStake(
   connection: Connection,
   stakePoolAddress: PublicKey,
   validatorVote: PublicKey,
-  lamports: number,
+  lamports: AmountInput,
   ephemeralStakeSeed?: number,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress)
@@ -1461,7 +1480,7 @@ export async function decreaseValidatorStake(
   connection: Connection,
   stakePoolAddress: PublicKey,
   validatorVote: PublicKey,
-  lamports: number,
+  lamports: AmountInput,
   ephemeralStakeSeed?: number,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress)
