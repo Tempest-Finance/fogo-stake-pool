@@ -93,7 +93,7 @@ class BNInstructionLayout extends BufferLayout.Layout<BN> {
  * Properly handles BN values larger than Number.MAX_SAFE_INTEGER.
  * Compatible with @solana/buffer-layout.struct().
  */
-// eslint-disable-next-line ts/no-explicit-any
+
 export function u64Instruction(property?: string): any {
   return new BNInstructionLayout(8, false, property)
 }
