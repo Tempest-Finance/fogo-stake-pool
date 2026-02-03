@@ -90,3 +90,46 @@ max_gas_spend = 200000
 [[domains.tx_variations.instructions]]
 program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 required = true
+
+# ================================================
+# Lock iFOGO
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "LockiFOGO"
+max_gas_spend = 200000
+
+# (Optional) Create escrow ATA
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+
+# CreateVestingEscrowWithSession
+[[domains.tx_variations.instructions]]
+program = "LockvXm2nWht6EvHf44AmCuS3eMKRiWTuks2x27XRRo"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "914e278f0a8c38ee" }] }
+
+# ================================================
+# Claim Locked iFOGO
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "ClaimLockediFOGO"
+max_gas_spend = 200000
+
+# ClaimWithSession
+[[domains.tx_variations.instructions]]
+program = "LockvXm2nWht6EvHf44AmCuS3eMKRiWTuks2x27XRRo"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "81d2ee4c3f8602a7" }] }
