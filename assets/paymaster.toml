@@ -78,13 +78,32 @@ data_type = "U8"
 constraint = { EqualTo = [{ U8 = 29 }] }
 
 # ================================================
+# Withdraw From Stake Account
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "WithdrawFromStakeAccount"
+max_gas_spend = 50000
+
+# WithdrawFromStakeAccountWithSession (discriminator 30)
+[[domains.tx_variations.instructions]]
+program = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 30 }] }
+
+# ================================================
 # OpenBox
 # ================================================
 
 [[domains.tx_variations]]
 version = "v1"
 name = "OpenBox"
-max_gas_spend = 200000
+max_gas_spend = 50000
 
 # (Optional) Create memo
 [[domains.tx_variations.instructions]]
