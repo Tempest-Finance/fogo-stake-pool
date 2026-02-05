@@ -198,7 +198,7 @@ export async function prepareWithdrawAccounts(
   }
 
   // Sort from highest to lowest balance
-  accounts = accounts.sort(compareFn || ((a, b) => b.lamports.sub(a.lamports).toNumber()))
+  accounts = accounts.sort(compareFn || ((a, b) => b.lamports.cmp(a.lamports)))
 
   // Prepare the list of accounts to withdraw from
   const withdrawFrom: WithdrawAccount[] = []
