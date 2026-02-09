@@ -12,6 +12,9 @@ edition = "2021"
 [workspace.metadata.spellcheck]
 config = "scripts/spellcheck.toml"
 
+[workspace.metadata.toolchains]
+format = "nightly-2026-01-22"
+
 [workspace.lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
