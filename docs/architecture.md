@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the Fogo Stake Pool system ar
 
 ## System Overview
 
-The Fogo Stake Pool program implements a liquid staking protocol on FOGO blockchain, allowing users to pool their stake and receive liquid tokens in return. 
+The Fogo Stake Pool program implements a liquid staking protocol on FOGO blockchain, allowing users to pool their stake and receive liquid tokens in return.
 The system is designed for security, efficiency, and scalability while maintaining decentralization.
 
 ```
@@ -39,6 +39,7 @@ The system is designed for security, efficiency, and scalability while maintaini
 The core FOGO blockchain program written in Rust that manages all stake pool operations.
 
 #### Key Files:
+
 - **`lib.rs`** (Entry Point): Program constants, PDA derivation, core utilities
 - **`instruction.rs`**: Complete instruction set with serialization
 - **`processor.rs`**: Main business logic for all operations
@@ -93,6 +94,7 @@ EPHEMERAL_STAKE_SEED_PREFIX = b"ephemeral"
 ```
 
 #### PDA Structure:
+
 ```
 Stake Pool Address + Seeds → PDA
 ├── [pool_address, "deposit"] → Deposit Authority
@@ -115,6 +117,7 @@ For detailed field-level specifications, refer to the source code in `program/sr
 ### 4. Security Model
 
 #### Fee Protection Mechanism:
+
 ```rust
 // Maximum 3/2 ratio increase per epoch prevents malicious fee increases
 pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
@@ -132,6 +135,7 @@ pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
 5. **Minimum Stake Requirements**: 1,000,000 lamports minimum per validator
 
 #### Compute Budget Management:
+
 ```rust
 pub const MAX_VALIDATORS_TO_UPDATE: usize = 4;  // Per instruction limit
 ```
@@ -139,6 +143,7 @@ pub const MAX_VALIDATORS_TO_UPDATE: usize = 4;  // Per instruction limit
 ## Transaction Flow Architecture
 
 ### Deposit Flow:
+
 ```
 User tokens/Stake → Validation → Pool Integration → Token Minting
      │              │               │                │
@@ -151,6 +156,7 @@ User tokens/Stake → Validation → Pool Integration → Token Minting
 ```
 
 ### Withdrawal Flow:
+
 ```
 Pool Tokens → Validation → Stake Preparation → tokens Transfer
      │            │              │                 │
@@ -165,6 +171,7 @@ Pool Tokens → Validation → Stake Preparation → tokens Transfer
 ## Client Architecture
 
 ### 1. CLI Tool (`clients/cli/`)
+
 - **Purpose**: Administrative operations and power-user functionality
 - **Architecture**: Single binary with command-based interface
 - **Key Features**: Pool creation, validator management, fee adjustment
@@ -174,16 +181,19 @@ Pool Tokens → Validation → Stake Preparation → tokens Transfer
 ## Performance Considerations
 
 ### Compute Budget Management
+
 - **Validator Updates**: Limited to 4 per instruction due to compute constraints
 - **Batch Processing**: Large operations split across multiple transactions
 - **Optimize Account Access**: Minimize account reads in hot paths
 
 ### Storage Optimization
+
 - **BigVec**: Efficient growth strategy for validator lists
 - **Account Size**: Minimized through careful struct packing
 - **Rent Optimization**: Accounts sized for rent exemption
 
 ### Network Efficiency
+
 - **Transaction Batching**: Related operations grouped when possible
 - **Account Prefetching**: SDK pre-loads related accounts
 - **Connection Pooling**: Efficient RPC usage patterns
@@ -191,11 +201,13 @@ Pool Tokens → Validation → Stake Preparation → tokens Transfer
 ## Upgrade Strategy
 
 ### Program Upgrades
+
 - **Immutable Core**: Critical logic paths use immutable deployment
 - **State Migrations**: Versioned account structures with migration support
 - **Backward Compatibility**: New features maintain compatibility with existing pools
 
 ### Client Library Versioning
+
 - **Semantic Versioning**: Standard semver across all client libraries
 - **API Stability**: Stable public APIs with deprecation notices
 - **Cross-Version Support**: SDKs support multiple program versions
@@ -203,11 +215,13 @@ Pool Tokens → Validation → Stake Preparation → tokens Transfer
 ## Monitoring & Observability
 
 ### On-Chain Metrics
+
 - **Pool Performance**: APY, fees collected, validator performance
 - **Health Indicators**: Reserve levels, validator activation status
 - **Usage Statistics**: Deposits, withdrawals, token transfers
 
 ### Off-Chain Monitoring
+
 - **RPC Performance**: Connection reliability and response times
 - **Transaction Success Rates**: Success/failure ratios by operation
 - **Client Library Usage**: SDK adoption and error patterns

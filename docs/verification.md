@@ -52,29 +52,25 @@ solana-verify get-executable-hash target/deploy/spl_stake_pool.so
 ```
 
 Example output:
+
 ```
-43dfafc0a84e41b901fc26ed447be317a9c620588113e9bc42d7d6277c73c39e
+4540ca6703ab485d9f4624084dcc3ae708daf90c53537991ddb8810b954ae95e
 ```
+
+> **Note**: `solana-verify` strips trailing zero bytes before hashing. Using `shasum -a 256` on the same file will produce a different hash (e.g., `7ec627b1...`) because it hashes the full file.
 
 ## Step 2: Deploy the Program
 
-Deploy the verifiable build to Fogo mainnet:
+For direct deployment (single signer):
 
 ```bash
-# Deploy to mainnet
 solana program deploy \
   --url https://mainnet.fogo.io \
   --program-id .keys/SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr.json \
   target/deploy/spl_stake_pool.so
 ```
 
-For testnet:
-```bash
-solana program deploy \
-  --url https://testnet.fogo.io \
-  --program-id .keys/SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr.json \
-  target/deploy/spl_stake_pool.so
-```
+For Squads multisig deployment, see [multisig.md](./multisig.md#program-upgrades).
 
 ### Verify deployment hash matches
 
@@ -105,15 +101,15 @@ solana-verify verify-from-repo \
 
 ### Options explained
 
-| Option | Description |
-|--------|-------------|
-| `-u` | RPC endpoint (mainnet or testnet) |
-| `--program-id` | The deployed program address |
-| `--library-name` | Crate name from `Cargo.toml` (`spl_stake_pool`) |
-| `--mount-path` | Relative path to program directory (`program`) |
-| `--commit-hash` | (Optional) Specific commit to verify against |
-| `-k, --keypair` | (Optional) Path to keypair for uploading PDA |
-| `-y, --skip-prompt` | Skip confirmation prompt |
+| Option              | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `-u`                | RPC endpoint (mainnet or testnet)               |
+| `--program-id`      | The deployed program address                    |
+| `--library-name`    | Crate name from `Cargo.toml` (`spl_stake_pool`) |
+| `--mount-path`      | Relative path to program directory (`program`)  |
+| `--commit-hash`     | (Optional) Specific commit to verify against    |
+| `-k, --keypair`     | (Optional) Path to keypair for uploading PDA    |
+| `-y, --skip-prompt` | Skip confirmation prompt                        |
 
 ### For a specific commit
 
@@ -142,9 +138,9 @@ solana-verify remote submit-job \
 ```
 
 Check job status:
+
 ```bash
-solana-verify remote get-status \
-  --program-id SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
+solana-verify remote get-status --program-id SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
 ```
 
 ## Verification Status
@@ -182,6 +178,7 @@ error: no library named 'stake_pool' found
 ```
 
 **Solution**: Use the exact crate name from `program/Cargo.toml`:
+
 ```bash
 solana-verify build --library-name spl_stake_pool
 ```
@@ -200,11 +197,11 @@ solana-verify build --library-name spl_stake_pool
 
 ### Why `make build` hashes don't match `solana-verify build`
 
-| Build Method | Environment | Deterministic |
-|--------------|-------------|---------------|
-| `make build` | Local toolchain | No |
-| `cargo build-sbf` | Local toolchain | No |
-| `solana-verify build` | Docker container | Yes |
+| Build Method          | Environment      | Deterministic |
+| --------------------- | ---------------- | ------------- |
+| `make build`          | Local toolchain  | No            |
+| `cargo build-sbf`     | Local toolchain  | No            |
+| `solana-verify build` | Docker container | Yes           |
 
 Even minor differences in Rust version, LLVM, or linker settings produce completely different binaries. The Docker-based build ensures everyone gets the exact same output.
 
@@ -251,6 +248,58 @@ solana-verify verify-from-repo \
 - [Solana Verifiable Build](https://github.com/Ellipsis-Labs/solana-verifiable-build)
 - [Fogo Documentation](https://docs.fogo.io)
 - [OtterSec Verification Registry](https://verify.osec.io)
+
+---
+
+## Verifying Buffers and Programs
+
+### Verify a buffer before approving an upgrade
+
+```bash
+# Dump the buffer to a local file
+solana program dump <BUFFER_ADDRESS> buffer.so --url https://mainnet.fogo.io
+
+# Get the hash (using solana-verify method - strips trailing zeros)
+solana-verify get-executable-hash buffer.so
+
+# Or get raw SHA256 hash
+shasum -a 256 buffer.so
+```
+
+### Verify the current on-chain program
+
+```bash
+# Dump the deployed program
+solana program dump SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr program.so --url https://mainnet.fogo.io
+
+# Get the hash
+solana-verify get-executable-hash program.so
+# Or: shasum -a 256 program.so
+```
+
+### Rebuild from source and compare
+
+```bash
+git clone https://github.com/Tempest-Finance/fogo-stake-pool
+cd fogo-stake-pool
+git checkout <COMMIT_HASH>
+solana-verify build --library-name spl_stake_pool
+
+# Compare hashes
+solana-verify get-executable-hash target/deploy/spl_stake_pool.so
+shasum -a 256 target/deploy/spl_stake_pool.so
+```
+
+### Hash methods comparison
+
+| Method            | Command                                     | What it does                       |
+| ----------------- | ------------------------------------------- | ---------------------------------- |
+| **solana-verify** | `solana-verify get-executable-hash file.so` | Strips trailing zeros, then SHA256 |
+| **Raw SHA256**    | `shasum -a 256 file.so`                     | SHA256 of full file                |
+
+Both methods are valid for verification - just use the same method consistently when comparing.
+
+---
 
 ## See Also
 

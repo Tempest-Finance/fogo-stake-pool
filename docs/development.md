@@ -32,7 +32,7 @@ rustc --version  # Should show 1.86.0
 cargo --version
 
 # Check Solana CLI
-solana --version 
+solana --version
 
 # Check Node.js and pnpm
 node --version
@@ -392,6 +392,7 @@ git commit -m "test(integration): add comprehensive pool creation tests"
 ### Pull Request Process
 
 1. **Branch Naming**: Use descriptive names
+
    ```bash
    git checkout -b feat/add-validator-rebalancing
    git checkout -b fix/cli-account-parsing
@@ -399,6 +400,7 @@ git commit -m "test(integration): add comprehensive pool creation tests"
    ```
 
 2. **Testing Requirements**:
+
    ```bash
    # Ensure all tests pass
    make test
@@ -407,6 +409,7 @@ git commit -m "test(integration): add comprehensive pool creation tests"
    ```
 
 3. **Code Quality Checks**:
+
    ```bash
    make fmt lint check
    pnpm clients:js:lint
@@ -491,15 +494,18 @@ The project includes GitHub Actions workflows:
 ## Resources and References
 
 ### Documentation
+
 - [FOGO Docs](https://docs.fogo.io/)
 - [Anchor Framework](https://www.anchor-lang.com/)
 
 ### Tools
+
 - [Blockchain Explorer](https://explorer.fogo.io/)
 - [Block Explorer](https://explorer.fogo.io/)
 - [FogoScan](https://fogoscan.com/)
 
 ### Community
+
 - [Discord](https://discord.gg/FogoChain)
 - [Stack Overflow `fogo` tag](https://stackoverflow.com/questions/tagged/fogo)
 

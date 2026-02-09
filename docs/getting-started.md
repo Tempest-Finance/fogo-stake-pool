@@ -1,6 +1,6 @@
 # Getting Started with Fogo Stake Pool
 
-This guide will help you quickly set up your development environment and using the Fogo Stake Pool program. 
+This guide will help you quickly set up your development environment and using the Fogo Stake Pool program.
 Whether you're building a dApp, managing validators, or integrating staking into your application, this guide covers everything you need to get started.
 
 ## Prerequisites
@@ -93,20 +93,20 @@ pnpm add @ignitionfi/fogo-stake-pool @solana/web3.js
 ### Basic Setup
 
 ```typescript
-import { Connection, PublicKey, Keypair, clusterApiUrl } from '@solana/web3.js';
 import {
   getStakePoolAccount,
   getStakePoolAccounts,
   STAKE_POOL_PROGRAM_ID,
-} from '@ignitionfi/fogo-stake-pool';
+} from '@ignitionfi/fogo-stake-pool'
+import { clusterApiUrl, Connection, Keypair, PublicKey } from '@solana/web3.js'
 
 // Connect to cluster
-const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+const connection = new Connection(clusterApiUrl('devnet'), 'confirmed')
 
 // Load your keypair
 const payer = Keypair.fromSecretKey(
   Buffer.from(JSON.parse(process.env.PRIVATE_KEY || '[]'))
-);
+)
 ```
 
 ### Finding Stake Pools
@@ -116,16 +116,16 @@ const payer = Keypair.fromSecretKey(
 const stakePools = await getStakePoolAccounts(
   connection,
   STAKE_POOL_PROGRAM_ID
-);
+)
 
-console.log(`Found ${stakePools?.length || 0} stake pools`);
+console.log(`Found ${stakePools?.length || 0} stake pools`)
 
 // Get a specific stake pool
-const stakePoolAddress = new PublicKey('YOUR_STAKE_POOL_ADDRESS');
-const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+const stakePoolAddress = new PublicKey('YOUR_STAKE_POOL_ADDRESS')
+const stakePool = await getStakePoolAccount(connection, stakePoolAddress)
 
-console.log('Pool mint:', stakePool.account.data.poolMint.toBase58());
-console.log('Total lamports:', stakePool.account.data.totalLamports.toString());
+console.log('Pool mint:', stakePool.account.data.poolMint.toBase58())
+console.log('Total lamports:', stakePool.account.data.totalLamports.toString())
 ```
 
 ### Deposit Operations
@@ -133,38 +133,38 @@ console.log('Total lamports:', stakePool.account.data.totalLamports.toString());
 #### Deposit SOL
 
 ```typescript
-import { depositSol } from '@ignitionfi/fogo-stake-pool';
-import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { depositSol } from '@ignitionfi/fogo-stake-pool'
+import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js'
 
 // Deposit 1 SOL into the stake pool
-const lamports = 1_000_000_000; // 1 SOL in lamports
+const lamports = 1_000_000_000 // 1 SOL in lamports
 const { instructions, signers } = await depositSol(
   connection,
   stakePoolAddress,
   payer.publicKey, // SOL comes from this account
   lamports
-);
+)
 
 // Create and send transaction
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer, ...signers],
   { commitment: 'confirmed' }
-);
+)
 
-console.log('Deposit successful:', signature);
+console.log('Deposit successful:', signature)
 ```
 
 #### Deposit Existing Stake Account
 
 ```typescript
-import { depositStake } from '@ignitionfi/fogo-stake-pool';
+import { depositStake } from '@ignitionfi/fogo-stake-pool'
 
 // Deposit an existing stake account into the pool
-const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS');
-const stakeAccount = new PublicKey('YOUR_STAKE_ACCOUNT');
+const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS')
+const stakeAccount = new PublicKey('YOUR_STAKE_ACCOUNT')
 
 const { instructions, signers } = await depositStake(
   connection,
@@ -172,16 +172,16 @@ const { instructions, signers } = await depositStake(
   payer.publicKey, // Current stake authority
   validatorVoteAccount,
   stakeAccount
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer, ...signers]
-);
+)
 
-console.log('Stake deposited:', signature);
+console.log('Stake deposited:', signature)
 ```
 
 ### Withdraw Operations
@@ -189,56 +189,56 @@ console.log('Stake deposited:', signature);
 #### Withdraw SOL
 
 ```typescript
-import { withdrawSol } from '@ignitionfi/fogo-stake-pool';
+import { withdrawSol } from '@ignitionfi/fogo-stake-pool'
 
 // Withdraw 0.5 pool tokens worth of SOL
-const poolTokenAmount = 0.5;
+const poolTokenAmount = 0.5
 const { instructions, signers } = await withdrawSol(
   connection,
   stakePoolAddress,
   payer.publicKey, // Pool token owner
   payer.publicKey, // SOL receiver
   poolTokenAmount
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer, ...signers]
-);
+)
 
-console.log('Withdrawal successful:', signature);
+console.log('Withdrawal successful:', signature)
 ```
 
 #### Withdraw Stake
 
 ```typescript
-import { withdrawStake } from '@ignitionfi/fogo-stake-pool';
+import { withdrawStake } from '@ignitionfi/fogo-stake-pool'
 
 // Withdraw stake from the pool
-const poolTokenAmount = 1.0;
+const poolTokenAmount = 1.0
 const { instructions, signers, stakeReceiver } = await withdrawStake(
   connection,
   stakePoolAddress,
   payer.publicKey, // Pool token owner
   poolTokenAmount
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer, ...signers]
-);
+)
 
-console.log('Stake withdrawn to:', stakeReceiver?.toBase58());
-console.log('Transaction:', signature);
+console.log('Stake withdrawn to:', stakeReceiver?.toBase58())
+console.log('Transaction:', signature)
 ```
 
 ### Session-Based Operations (Gasless Transactions)
 
-The SDK supports session-based operations for gasless transactions using the Fogo Sessions SDK. 
+The SDK supports session-based operations for gasless transactions using the Fogo Sessions SDK.
 This is particularly useful for web applications where you want to provide a seamless user experience.
 
 #### Setup with Fogo Sessions
@@ -266,7 +266,7 @@ function StakePoolComponent() {
 #### Deposit with Session
 
 ```typescript
-import { depositWsolWithSession } from '@ignitionfi/fogo-stake-pool';
+import { depositWsolWithSession } from '@ignitionfi/fogo-stake-pool'
 
 async function depositWithSession(
   connection,
@@ -274,7 +274,7 @@ async function depositWithSession(
   sessionState,
   amount
 ) {
-  const lamports = amount * 1_000_000_000; // Convert SOL to lamports
+  const lamports = amount * 1_000_000_000 // Convert SOL to lamports
 
   // Create deposit instructions using session
   const { instructions } = await depositWsolWithSession(
@@ -287,20 +287,20 @@ async function depositWithSession(
     undefined, // referrerTokenAccount (optional)
     undefined, // depositAuthority (optional)
     sessionState.payer // Session payer
-  );
+  )
 
   // Send using session
-  const result = await sessionState.sendTransaction(instructions);
+  const result = await sessionState.sendTransaction(instructions)
 
-  console.log('Signature:', result.signature);
-  return result;
+  console.log('Signature:', result.signature)
+  return result
 }
 ```
 
 #### Withdraw with Session
 
 ```typescript
-import { withdrawWsolWithSession } from '@ignitionfi/fogo-stake-pool';
+import { withdrawWsolWithSession } from '@ignitionfi/fogo-stake-pool'
 
 async function withdrawWithSession(
   connection,
@@ -315,13 +315,13 @@ async function withdrawWithSession(
     sessionState.sessionPublicKey, // Session signer
     sessionState.walletPublicKey, // User's wallet
     poolTokenAmount
-  );
+  )
 
   // Send using session
-  const result = await sessionState.sendTransaction(instructions);
+  const result = await sessionState.sendTransaction(instructions)
 
-  console.log('Signature:', result.signature);
-  return result;
+  console.log('Signature:', result.signature)
+  return result
 }
 ```
 
@@ -329,10 +329,10 @@ async function withdrawWithSession(
 
 ```typescript
 import {
-  withdrawStakeWithSession,
   findNextUserStakeSeed,
-  getUserStakeAccounts
-} from '@ignitionfi/fogo-stake-pool';
+  getUserStakeAccounts,
+  withdrawStakeWithSession
+} from '@ignitionfi/fogo-stake-pool'
 
 async function withdrawStakeWithSessionExample(
   connection,
@@ -345,7 +345,7 @@ async function withdrawStakeWithSessionExample(
     connection,
     STAKE_POOL_PROGRAM_ID,
     sessionState.walletPublicKey
-  );
+  )
 
   // Create withdraw stake instructions using session
   const { instructions, stakeAccountPubkeys, userStakeSeeds } = await withdrawStakeWithSession(
@@ -356,14 +356,14 @@ async function withdrawStakeWithSessionExample(
     sessionState.payer, // Payer for stake account rent
     poolTokenAmount,
     nextSeed // Starting seed for user stake PDAs
-  );
+  )
 
   // Send using session
-  const result = await sessionState.sendTransaction(instructions);
+  const result = await sessionState.sendTransaction(instructions)
 
-  console.log('Stake accounts created:', stakeAccountPubkeys.map(p => p.toBase58()));
-  console.log('Seeds used:', userStakeSeeds);
-  return result;
+  console.log('Stake accounts created:', stakeAccountPubkeys.map(p => p.toBase58()))
+  console.log('Seeds used:', userStakeSeeds)
+  return result
 }
 
 // Fetch user's stake accounts after withdrawal
@@ -372,13 +372,13 @@ async function getUserStakes(connection, userPubkey) {
     connection,
     STAKE_POOL_PROGRAM_ID,
     userPubkey
-  );
+  )
 
-  stakes.forEach(stake => {
-    console.log(`Stake ${stake.seed}: ${stake.lamports} lamports, state: ${stake.state}`);
-  });
+  stakes.forEach((stake) => {
+    console.log(`Stake ${stake.seed}: ${stake.lamports} lamports, state: ${stake.state}`)
+  })
 
-  return stakes;
+  return stakes
 }
 ```
 
@@ -387,93 +387,93 @@ async function getUserStakes(connection, userPubkey) {
 #### Add Validator to Pool
 
 ```typescript
-import { addValidatorToPool } from '@ignitionfi/fogo-stake-pool';
+import { addValidatorToPool } from '@ignitionfi/fogo-stake-pool'
 
-const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS');
+const validatorVoteAccount = new PublicKey('VALIDATOR_VOTE_ADDRESS')
 
 const { instructions } = await addValidatorToPool(
   connection,
   stakePoolAddress,
   validatorVoteAccount
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer] // Must be pool staker
-);
+)
 
-console.log('Validator added:', signature);
+console.log('Validator added:', signature)
 ```
 
 #### Remove Validator from Pool
 
 ```typescript
-import { removeValidatorFromPool } from '@ignitionfi/fogo-stake-pool';
+import { removeValidatorFromPool } from '@ignitionfi/fogo-stake-pool'
 
 const { instructions } = await removeValidatorFromPool(
   connection,
   stakePoolAddress,
   validatorVoteAccount
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer] // Must be pool staker
-);
+)
 
-console.log('Validator removed:', signature);
+console.log('Validator removed:', signature)
 ```
 
 #### Increase Validator Stake
 
 ```typescript
-import { increaseValidatorStake } from '@ignitionfi/fogo-stake-pool';
+import { increaseValidatorStake } from '@ignitionfi/fogo-stake-pool'
 
-const lamports = 5_000_000_000; // 5 SOL to add to validator
+const lamports = 5_000_000_000 // 5 SOL to add to validator
 
 const { instructions } = await increaseValidatorStake(
   connection,
   stakePoolAddress,
   validatorVoteAccount,
   lamports
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer] // Must be pool staker
-);
+)
 
-console.log('Validator stake increased:', signature);
+console.log('Validator stake increased:', signature)
 ```
 
 #### Decrease Validator Stake
 
 ```typescript
-import { decreaseValidatorStake } from '@ignitionfi/fogo-stake-pool';
+import { decreaseValidatorStake } from '@ignitionfi/fogo-stake-pool'
 
-const lamports = 2_000_000_000; // 2 SOL to remove from validator
+const lamports = 2_000_000_000 // 2 SOL to remove from validator
 
 const { instructions } = await decreaseValidatorStake(
   connection,
   stakePoolAddress,
   validatorVoteAccount,
   lamports
-);
+)
 
-const transaction = new Transaction().add(...instructions);
+const transaction = new Transaction().add(...instructions)
 const signature = await sendAndConfirmTransaction(
   connection,
   transaction,
   [payer] // Must be pool staker
-);
+)
 
-console.log('Validator stake decreased:', signature);
+console.log('Validator stake decreased:', signature)
 ```
 
 ### Pool Maintenance and Information
@@ -481,52 +481,52 @@ console.log('Validator stake decreased:', signature);
 #### Update Stake Pool
 
 ```typescript
-import { updateStakePool } from '@ignitionfi/fogo-stake-pool';
+import { updateStakePool } from '@ignitionfi/fogo-stake-pool'
 
 // Update pool after epoch change
-const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
+const stakePool = await getStakePoolAccount(connection, stakePoolAddress)
 
 const { updateListInstructions, finalInstructions } = await updateStakePool(
   connection,
   stakePool,
   false // noMerge flag
-);
+)
 
 // Send update list instructions first (may need multiple transactions)
 for (const instruction of updateListInstructions) {
-  const tx = new Transaction().add(instruction);
-  await sendAndConfirmTransaction(connection, tx, [payer]);
+  const tx = new Transaction().add(instruction)
+  await sendAndConfirmTransaction(connection, tx, [payer])
 }
 
 // Send final instructions
-const finalTx = new Transaction().add(...finalInstructions);
-await sendAndConfirmTransaction(connection, finalTx, [payer]);
+const finalTx = new Transaction().add(...finalInstructions)
+await sendAndConfirmTransaction(connection, finalTx, [payer])
 
-console.log('Stake pool updated');
+console.log('Stake pool updated')
 ```
 
 #### Get Stake Pool Information
 
 ```typescript
-import { stakePoolInfo } from '@ignitionfi/fogo-stake-pool';
+import { stakePoolInfo } from '@ignitionfi/fogo-stake-pool'
 
 // Get comprehensive pool information
-const info = await stakePoolInfo(connection, stakePoolAddress);
+const info = await stakePoolInfo(connection, stakePoolAddress)
 
-console.log('Pool address:', info.address);
-console.log('Manager:', info.manager);
-console.log('Total lamports:', info.totalLamports);
-console.log('Pool token supply:', info.poolTokenSupply);
-console.log('Current validators:', info.details.currentNumberOfValidators);
-console.log('Max validators:', info.details.maxNumberOfValidators);
-console.log('Update required:', info.details.updateRequired);
+console.log('Pool address:', info.address)
+console.log('Manager:', info.manager)
+console.log('Total lamports:', info.totalLamports)
+console.log('Pool token supply:', info.poolTokenSupply)
+console.log('Current validators:', info.details.currentNumberOfValidators)
+console.log('Max validators:', info.details.maxNumberOfValidators)
+console.log('Update required:', info.details.updateRequired)
 
 // List all validators
 info.validatorList.forEach((validator, index) => {
-  console.log(`Validator ${index + 1}:`, validator.voteAccountAddress);
-  console.log('  Active stake:', validator.activeStakeLamports);
-  console.log('  Transient stake:', validator.transientStakeLamports);
-});
+  console.log(`Validator ${index + 1}:`, validator.voteAccountAddress)
+  console.log('  Active stake:', validator.activeStakeLamports)
+  console.log('  Transient stake:', validator.transientStakeLamports)
+})
 ```
 
 ## Next Steps
@@ -557,15 +557,18 @@ Now that you've set up your development environment and created your first stake
 ### Transaction Errors
 
 **"Insufficient funds" error:**
+
 - Check your SOL balance: `solana balance`
 - Account for rent exemption (≈0.00203 SOL per stake account)
 - Ensure you have enough for transaction fees
 
 **"Stake account not active" error:**
+
 - Wait for stake activation (usually 1-2 epochs)
 - Check stake status: `solana stake-account <STAKE_ADDRESS>`
 
 **"Validator not found" error:**
+
 - Verify the validator is in the pool's validator list
 - Check validator vote account is active: `solana validators`
 
