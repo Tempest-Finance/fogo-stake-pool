@@ -26,9 +26,10 @@ solana-program-error = "2.2"
 solana-pubkey = "2.4"
 spl-pod = { version = "0.5", features = ["borsh"] }
 thiserror = "2.0"
-
-[package.metadata.cargo-machete]
-ignored = ["num-traits"]  # Required by num-derive at runtime
+# Required by num-derive at runtime
 
 [lints]
 workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["num-traits"]
