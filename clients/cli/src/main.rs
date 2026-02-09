@@ -323,6 +323,7 @@ fn send_transaction_or_squads_proposal_with_external_signers(
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn send_transaction_no_wait(
     config: &Config,
     transaction: Transaction,
@@ -337,6 +338,7 @@ fn send_transaction_no_wait(
     Ok(())
 }
 
+#[allow(clippy::result_large_err)]
 fn send_transaction(
     config: &Config,
     transaction: Transaction,

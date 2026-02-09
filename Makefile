@@ -6,7 +6,7 @@ PROGRAM_ID := SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr
 KEYPAIR    := .keys/$(PROGRAM_ID).json
 PROGRAM_SO := target/deploy/spl_stake_pool.so
 
-RUST_TOOLCHAIN_NIGHTLY := nightly-2025-02-16
+RUST_TOOLCHAIN_NIGHTLY := nightly-2026-01-22
 SOLANA_CLI_VERSION := 2.3.4
 
 nightly := +$(RUST_TOOLCHAIN_NIGHTLY)
