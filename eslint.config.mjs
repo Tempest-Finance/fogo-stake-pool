@@ -5,15 +5,12 @@ export default antfu(
     gitignore: true,
     stylistic: true,
     typescript: true,
-    unicorn: false,
     formatters: {
       css: true,
       html: true,
       markdown: true,
     },
     yaml: true,
-    vue: false,
-    react: true,
     ignores: [
       '**/dist/**',
       '**/coverage/**',
