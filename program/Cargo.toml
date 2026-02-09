@@ -28,7 +28,7 @@ solana-system-interface = "1"
 spl-pod = { version = "0.5.1", features = ["borsh",] }
 spl-associated-token-account = { version = "=7.0.0", features = ["no-entrypoint"] }
 spl-token = { version = "=8.0.0", features = ["no-entrypoint",] }
-spl-token-2022 = { version = "9.0.0", features = ["no-entrypoint",] }
+spl-token-2022 = { version = "10.0.0", features = ["no-entrypoint",] }
 thiserror = "2.0"
 bincode = "1.3.1"
 
