@@ -45,25 +45,25 @@ function toBN(value: AmountInput): BN {
     // Validate string is a valid non-negative integer
     const trimmed = value.trim()
     if (!/^\d+$/.test(trimmed)) {
-      throw new Error(`Invalid amount string: "${value}". Must be a non-negative integer.`)
+      throw new TypeError(`Invalid amount string: "${value}". Must be a non-negative integer.`)
     }
     return new BN(trimmed)
   }
 
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) {
-      throw new Error('Invalid amount: must be a finite number')
+      throw new TypeError('Invalid amount: must be a finite number')
     }
     if (value < 0) {
-      throw new Error('Invalid amount: must be non-negative')
+      throw new TypeError('Invalid amount: must be non-negative')
     }
     if (!Number.isInteger(value)) {
-      throw new Error('Invalid amount: must be an integer (lamports)')
+      throw new TypeError('Invalid amount: must be an integer (lamports)')
     }
     // CRITICAL: Numbers > MAX_SAFE_INTEGER have already lost precision
     // We throw an error instead of silently corrupting data
     if (value > Number.MAX_SAFE_INTEGER) {
-      throw new Error(
+      throw new TypeError(
         `Amount ${value} exceeds Number.MAX_SAFE_INTEGER (9,007,199,254,740,991). `
         + `Use BigInt or BN for large values to avoid precision loss.`,
       )
@@ -71,7 +71,7 @@ function toBN(value: AmountInput): BN {
     return new BN(value)
   }
 
-  throw new Error(`Invalid amount type: ${typeof value}`)
+  throw new TypeError(`Invalid amount type: ${typeof value}`)
 }
 
 /**

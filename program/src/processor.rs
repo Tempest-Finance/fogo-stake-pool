@@ -3822,7 +3822,7 @@ impl Processor {
                 token_program_info.key,
                 destination_account_info.key,
             )?,
-            &[destination_account_info.clone()],
+            core::slice::from_ref(destination_account_info),
         )?;
 
         Ok(())

@@ -2,7 +2,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import BN from 'bn.js'
 
 export function solToLamports(amount: number): number {
-  if (isNaN(amount)) {
+  if (Number.isNaN(amount)) {
     return Number(0)
   }
   return Number(amount * LAMPORTS_PER_SOL)
