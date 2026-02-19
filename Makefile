@@ -8,6 +8,7 @@ PROGRAM_SO := target/deploy/spl_stake_pool.so
 
 RUST_TOOLCHAIN_NIGHTLY := nightly-2026-01-22
 SOLANA_CLI_VERSION := 2.3.4
+PLATFORM_TOOLS_VERSION := v1.53
 
 nightly := +$(RUST_TOOLCHAIN_NIGHTLY)
 
@@ -39,7 +40,7 @@ solana-cli-version:
 
 # SBF build targets (called with directory paths like program)
 build-sbf-%:
-	RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
+	RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf --tools-version $(PLATFORM_TOOLS_VERSION) --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
 # JS CI targets (called with path patterns like clients-js)
 build-js-%:
@@ -116,7 +117,7 @@ publish-rust-dry-run-%:
 # ══════════════════════════════════════════════════════════════════════════════
 
 build: ## Build on-chain program
-	@RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf -- -p fogo-stake-pool-program
+	@RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf --tools-version $(PLATFORM_TOOLS_VERSION) -- -p fogo-stake-pool-program
 
 build/cli: ## Build CLI binary
 	cargo build --release -p fogo-stake-pool
