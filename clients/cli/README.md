@@ -13,3 +13,5 @@ cargo install fogo-stake-pool
 ```bash
 fogo-stake-pool --help
 ```
+
+See the full [CLI Reference](https://github.com/Tempest-Finance/fogo-stake-pool/blob/main/docs/cli-reference.md) for all commands and options.

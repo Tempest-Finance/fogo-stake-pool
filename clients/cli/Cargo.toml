@@ -1,6 +1,6 @@
 [package]
 name = "fogo-stake-pool"
-version = "2.0.2"
+version = "2.0.3"
 description = "Fogo Stake Pool CLI — manage stake pools on the Fogo blockchain"
 authors = { workspace = true }
 edition = { workspace = true }
