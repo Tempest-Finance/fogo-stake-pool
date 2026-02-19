@@ -200,7 +200,7 @@ cargo build --bin fogo-stake-pool --release
 # Test CLI
 pnpm clients:cli:test
 # OR
-cargo test -p fogo-stake-pool-cli
+cargo test -p fogo-stake-pool
 
 # Run CLI locally
 ./fogo-stake-pool --help
@@ -213,7 +213,7 @@ cargo run --bin fogo-stake-pool -- --help
 
 ```bash
 # Unit tests
-cargo test -p fogo-stake-pool-cli
+cargo test -p fogo-stake-pool
 
 # Integration tests with local validator
 ./scripts/client/setup-test-validator.sh
@@ -302,7 +302,7 @@ make test
 
 # Run tests for specific components
 cargo test -p spl-stake-pool          # Program tests
-cargo test -p fogo-stake-pool-cli      # CLI tests
+cargo test -p fogo-stake-pool      # CLI tests
 pnpm sdk test                         # SDK tests
 pnpm clients:py:test                  # Python tests
 ```

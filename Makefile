@@ -116,10 +116,10 @@ publish-rust-dry-run-%:
 # ══════════════════════════════════════════════════════════════════════════════
 
 build: ## Build on-chain program
-	@RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf -- -p spl-stake-pool
+	@RUSTFLAGS="--allow=unexpected_cfgs" cargo build-sbf -- -p fogo-stake-pool-program
 
 build/cli: ## Build CLI binary
-	cargo build --release -p fogo-stake-pool-cli
+	cargo build --release -p fogo-stake-pool
 
 build/js: ## Build JS client
 	pnpm -C clients/js build
@@ -129,13 +129,13 @@ build/js: ## Build JS client
 # ══════════════════════════════════════════════════════════════════════════════
 
 test: build ## Run all tests
-	SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p spl-stake-pool
+	SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p fogo-stake-pool-program
 
 test/unit: ## Run unit tests only
-	cargo test --lib -p spl-stake-pool
+	cargo test --lib -p fogo-stake-pool-program
 
 test/int: build ## Run integration tests only
-	SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p spl-stake-pool --test '*'
+	SBF_OUT_DIR=$(CURDIR)/target/deploy cargo $(nightly) test -p fogo-stake-pool-program --test '*'
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Code Quality

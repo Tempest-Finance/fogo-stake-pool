@@ -1,7 +1,15 @@
-# SPL Stake Pool program command-line utility
+# Fogo Stake Pool CLI
 
-A basic command-line for creating and using SPL Stake Pools. See https://spl.solana.com/stake-pool for more details.
+Command-line utility for creating and managing Fogo Stake Pools.
 
-Under `./scripts`, there are helpful Bash scripts for setting up and running a
-stake pool. More information at the
-[stake pool quick start guide](https://spl.solana.com/stake-pool/quickstart).
+## Install
+
+```bash
+cargo install fogo-stake-pool
+```
+
+## Usage
+
+```bash
+fogo-stake-pool --help
+```

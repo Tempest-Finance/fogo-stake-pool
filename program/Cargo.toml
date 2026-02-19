@@ -1,11 +1,14 @@
 [package]
-name = "spl-stake-pool"
+name = "fogo-stake-pool-program"
 version = "2.0.3"
-description = "Solana Program Library Stake Pool"
-authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
-repository = "https://github.com/solana-labs/solana-program-library"
-license = "Apache-2.0"
-edition = "2021"
+description = "Fogo Stake Pool on-chain program (fork of SPL Stake Pool)"
+authors = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+homepage = "https://github.com/Tempest-Finance/fogo-stake-pool"
+keywords = ["fogo", "solana", "stake-pool", "liquid-staking"]
+categories = ["cryptography::cryptocurrencies"]
 
 [features]
 no-entrypoint = []
@@ -42,6 +45,7 @@ spl-token = { version = "8.0", features = ["no-entrypoint",] }
 test-case = "3.3"
 
 [lib]
+name = "spl_stake_pool"
 crate-type = ["cdylib", "lib"]
 
 [lints]

@@ -1030,7 +1030,7 @@ const connection = new Connection(rpcUrl, {
 
 - **TypeScript SDK**: `@ignitionfi/fogo-stake-pool@1.1.8`
 - **Python Client**: `fogo-stake-pool@2.0.x`
-- **CLI Tool**: `fogo-stake-pool-cli@2.0.1`
+- **CLI Tool**: `fogo-stake-pool@2.0.1`
 
 ### Breaking Changes
 
