@@ -152,3 +152,236 @@ required = true
 start_byte = 0
 data_type = { Bytes = { length = 8 } }
 constraint = { EqualTo = [{ Bytes = "81d2ee4c3f8602a7" }] }
+
+# ================================================
+# Create Pyron Lending Account
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "CreateLendrAccount"
+max_gas_spend = 200000
+
+# lendrAccountInitializeWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "151e8b860b8cc4bf" }] }
+
+# ================================================
+# Multiply (Leverage)
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "Multiply"
+max_gas_spend = 500000
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
+
+# Pyron: lendingAccountStartFlashloanWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "92fd260757ad7ab2" }] }
+
+# (Optional) Create ATA for borrowed WSOL
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+
+# Pyron: lendingAccountBorrowWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "b3e8ba40f0a426ef" }] }
+
+# Stake Pool: DepositWsolWithSession (discriminator 27)
+[[domains.tx_variations.instructions]]
+program = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 27 }] }
+
+# Pyron: lendingAccountDepositWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "99d83d505a4fe709" }] }
+
+# Pyron: lendingAccountEndFlashloanWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "022ec90fa501b977" }] }
+
+# ================================================
+# Multiply (Deleverage)
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "MultiplyDeleverage"
+max_gas_spend = 1000000
+requires_wrapped_native_tokens = true
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
+
+# Pyron: lendingAccountStartFlashloanWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "92fd260757ad7ab2" }] }
+
+# Pyron: lendingAccountWithdrawWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "d8c6dba1679f8606" }] }
+
+# Stake Pool: WithdrawWsolWithSession (discriminator 28)
+[[domains.tx_variations.instructions]]
+program = "SP1s4uFeTAX9jsXXmwyDs1gxYYf7cdDZ8qHUHVxE1yr"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 28 }] }
+
+# SystemProgram: SessionWrap (wraps SOL for repay)
+[[domains.tx_variations.instructions]]
+program = "11111111111111111111111111111111"
+required = false
+
+# Create ATA (WSOL account for repay)
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+
+# Token program: SyncNative (0x11 = 17)
+[[domains.tx_variations.instructions]]
+program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 17 }] }
+
+# Pyron: lendingAccountRepayWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "33142501152263dc" }] }
+
+# Token program: CloseAccount / SessionUnwrap (0x09 = 9)
+[[domains.tx_variations.instructions]]
+program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 9 }] }
+
+# Pyron: lendingAccountEndFlashloanWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "022ec90fa501b977" }] }
+
+# ================================================
+# Valiant DEX Swap (USDC → FOGO)
+# ================================================
+
+[[domains.tx_variations]]
+version = "v1"
+name = "ValiantSwap"
+max_gas_spend = 500000
+requires_wrapped_native_tokens = true
+
+# SystemProgram: SessionWrap (disc 4000000 = 0x003D0900)
+[[domains.tx_variations.instructions]]
+program = "11111111111111111111111111111111"
+required = false
+
+# Create ATA (WSOL output account)
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+
+# Token program: SyncNative (0x11 = 17)
+[[domains.tx_variations.instructions]]
+program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 17 }] }
+
+# Valiant: swap (the API returns session-ready instructions with the standard swap disc)
+[[domains.tx_variations.instructions]]
+program = "vnt1u7PzorND5JjweFWmDawKe2hLWoTwHU6QKz6XX98"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "f8c69e91e17587c8" }] }
+
+# Token program: CloseAccount (0x09 = 9)
+[[domains.tx_variations.instructions]]
+program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 9 }] }
