@@ -864,6 +864,7 @@ export async function withdrawWsolWithSession(
   amount: number,
   minimumLamportsOut: number = 0,
   solWithdrawAuthority?: PublicKey,
+  skipBalanceCheck: boolean = false,
 ) {
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
@@ -871,13 +872,16 @@ export async function withdrawWsolWithSession(
   const poolTokens = solToLamports(amount)
 
   const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
-  const tokenAccount = await getAccount(connection, poolTokenAccount)
 
-  if (tokenAccount.amount < poolTokens) {
-    throw new Error(
-      `Not enough token balance to withdraw ${amount} pool tokens.
-          Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
-    )
+  if (!skipBalanceCheck) {
+    const tokenAccount = await getAccount(connection, poolTokenAccount)
+
+    if (tokenAccount.amount < poolTokens) {
+      throw new Error(
+        `Not enough token balance to withdraw ${amount} pool tokens.
+            Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
+      )
+    }
   }
 
   const userWsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, userPubkey)
