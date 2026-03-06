@@ -181,11 +181,6 @@ version = "v1"
 name = "Multiply"
 max_gas_spend = 500000
 
-# (Optional) Create memo
-[[domains.tx_variations.instructions]]
-program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
-required = false
-
 # Pyron: lendingAccountStartFlashloanWithSession
 [[domains.tx_variations.instructions]]
 program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
@@ -241,6 +236,11 @@ start_byte = 0
 data_type = { Bytes = { length = 8 } }
 constraint = { EqualTo = [{ Bytes = "022ec90fa501b977" }] }
 
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
+
 # ================================================
 # Multiply (Deleverage)
 # ================================================
@@ -250,11 +250,6 @@ version = "v1"
 name = "MultiplyDeleverage"
 max_gas_spend = 1000000
 requires_wrapped_native_tokens = true
-
-# (Optional) Create memo
-[[domains.tx_variations.instructions]]
-program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
-required = false
 
 # Pyron: lendingAccountStartFlashloanWithSession
 [[domains.tx_variations.instructions]]
@@ -335,6 +330,11 @@ required = true
 start_byte = 0
 data_type = { Bytes = { length = 8 } }
 constraint = { EqualTo = [{ Bytes = "022ec90fa501b977" }] }
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
 
 # ================================================
 # Valiant DEX Swap (USDC → FOGO)
