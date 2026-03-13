@@ -181,6 +181,16 @@ version = "v1"
 name = "Multiply"
 max_gas_spend = 500000
 
+# (Optional) Pyron: lendrAccountInitializeWithSession (first-time account creation)
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "151e8b860b8cc4bf" }] }
+
 # Pyron: lendingAccountStartFlashloanWithSession
 [[domains.tx_variations.instructions]]
 program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
