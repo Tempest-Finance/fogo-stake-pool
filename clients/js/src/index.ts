@@ -49,6 +49,7 @@ import {
   prepareWithdrawAccounts,
   PrepareWithdrawPrefetchedData,
   solToLamports,
+  solToLamportsBigInt,
   ValidatorAccount,
 } from './utils'
 
@@ -861,15 +862,32 @@ export async function withdrawWsolWithSession(
   stakePoolAddress: PublicKey,
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
-  amount: number,
-  minimumLamportsOut: number = 0,
+  amount: number | bigint,
+  minimumLamportsOut: number | bigint = 0,
   solWithdrawAuthority?: PublicKey,
   skipBalanceCheck: boolean = false,
 ) {
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint)
   const stakePool = stakePoolAccount.account.data
-  const poolTokens = solToLamports(amount)
+  // Precision-safe path: bigint callers pass lamports directly. For `number`
+  // inputs we go through `solToLamportsBigInt`, which converts in string-
+  // domain — this avoids the `amount * LAMPORTS_PER_SOL` float multiply that
+  // silently rounds above ~9.007M FOGO and would otherwise lock the rounded
+  // value into the bigint, defeating the whole point of the bigint path.
+  const poolTokens: bigint = typeof amount === 'bigint'
+    ? amount
+    : solToLamportsBigInt(amount)
+  // toBN's bigint branch does not enforce non-negativity (unlike its number
+  // branch), and the unsigned u64 encoder would silently serialize the
+  // magnitude. Reject early so a negative input can never become a positive
+  // withdrawal instruction.
+  if (poolTokens < BigInt(0)) {
+    throw new TypeError('withdrawWsolWithSession: amount must be non-negative')
+  }
+  if (typeof minimumLamportsOut === 'bigint' && minimumLamportsOut < BigInt(0)) {
+    throw new TypeError('withdrawWsolWithSession: minimumLamportsOut must be non-negative')
+  }
 
   const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
 
@@ -1077,11 +1095,11 @@ export async function withdrawStakeWithSession(
   stakePoolAddress: PublicKey,
   signerOrSession: PublicKey,
   userPubkey: PublicKey,
-  amount: number,
+  amount: number | bigint,
   userStakeSeedStart: number = 0,
   useReserve = false,
   voteAccountAddress?: PublicKey,
-  minimumLamportsOut: number = 0,
+  minimumLamportsOut: number | bigint = 0,
   validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
   allowPartial = false,
 ) {
@@ -1090,8 +1108,19 @@ export async function withdrawStakeWithSession(
   // First fetch: get stake pool to know other account addresses
   const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress)
   const stakePool = stakePoolAccount.account.data
-  const poolTokens = solToLamports(amount)
-  const poolAmount = new BN(poolTokens)
+  // See note on withdrawWsolWithSession: bigint callers pass lamports
+  // directly; number callers go through `solToLamportsBigInt` for an exact
+  // string-domain conversion that survives values above ~9.007M FOGO.
+  const poolTokens: bigint = typeof amount === 'bigint'
+    ? amount
+    : solToLamportsBigInt(amount)
+  if (poolTokens < BigInt(0)) {
+    throw new TypeError('withdrawStakeWithSession: amount must be non-negative')
+  }
+  if (typeof minimumLamportsOut === 'bigint' && minimumLamportsOut < BigInt(0)) {
+    throw new TypeError('withdrawStakeWithSession: minimumLamportsOut must be non-negative')
+  }
+  const poolAmount = new BN(poolTokens.toString())
 
   const poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userPubkey)
 
@@ -1241,7 +1270,10 @@ export async function withdrawStakeWithSession(
         tokenProgramId: stakePool.tokenProgramId,
         programSigner,
         reserveStake: stakePool.reserveStake,
-        poolTokensIn: withdrawAccount.poolAmount.toNumber(),
+        // Pass as bigint via toString to preserve precision above
+        // Number.MAX_SAFE_INTEGER. `BN.toNumber()` throws once the value
+        // exceeds 53 bits, which would defeat the bigint amount path.
+        poolTokensIn: BigInt(withdrawAccount.poolAmount.toString()),
         minimumLamportsOut,
         userStakeSeed,
       }),
