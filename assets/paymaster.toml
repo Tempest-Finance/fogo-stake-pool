@@ -347,6 +347,34 @@ program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 required = false
 
 # ================================================
+# Multiply (Add Collateral)
+# ================================================
+# A plain top-up of an open loop: no borrow, no flash loan, so it carries no
+# risk-engine check and lands even while the position sits under Pyron's
+# init-health floor — the non-destructive alternative to unwinding.
+# FOGO-funded top-ups stake first in their own tx, matched by "Deposit" above.
+
+[[domains.tx_variations]]
+version = "v1"
+name = "MultiplyAddCollateral"
+max_gas_spend = 200000
+
+# Pyron: lendingAccountDepositWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "99d83d505a4fe709" }] }
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
+
+# ================================================
 # Valiant DEX Swap (USDC → FOGO)
 # ================================================
 
