@@ -154,6 +154,50 @@ data_type = { Bytes = { length = 8 } }
 constraint = { EqualTo = [{ Bytes = "81d2ee4c3f8602a7" }] }
 
 # ================================================
+# Claim Season Bonus (native FOGO)
+# ================================================
+# Same claim_with_session as ClaimLockediFOGO, but the bonus is paid in the
+# native mint rather than iFOGO. Two extra instructions the lock claim never
+# needs: a reward wallet may hold no wFOGO account at all, and the unwrap turns
+# the claimed wFOGO into spendable FOGO in the same transaction.
+
+[[domains.tx_variations]]
+version = "v1"
+name = "ClaimRewardFOGO"
+max_gas_spend = 200000
+requires_wrapped_native_tokens = true
+
+# (Optional) Create the recipient's native-mint ATA
+[[domains.tx_variations.instructions]]
+program = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+required = false
+
+# ClaimWithSession
+[[domains.tx_variations.instructions]]
+program = "LockvXm2nWht6EvHf44AmCuS3eMKRiWTuks2x27XRRo"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "81d2ee4c3f8602a7" }] }
+
+# Token program: CloseAccount / SessionUnwrap (0x09 = 9)
+[[domains.tx_variations.instructions]]
+program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = "U8"
+constraint = { EqualTo = [{ U8 = 9 }] }
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
+
+# ================================================
 # Create Pyron Lending Account
 # ================================================
 
