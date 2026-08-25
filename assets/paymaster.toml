@@ -335,6 +335,17 @@ start_byte = 0
 data_type = "U8"
 constraint = { EqualTo = [{ U8 = 28 }] }
 
+# (Optional) Pyron: lendingAccountWithdrawEmissionsWithSession — only a repay-all
+# carries it, and the program won't close a balance holding emissions (6033).
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = false
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "5cd2ff4a6011c343" }] }
+
 # SystemProgram: SessionWrap (wraps SOL for repay)
 [[domains.tx_variations.instructions]]
 program = "11111111111111111111111111111111"
