@@ -430,6 +430,33 @@ program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 required = false
 
 # ================================================
+# Multiply (Withdraw Collateral)
+# ================================================
+# The mirror of MultiplyAddCollateral: a loop carrying no debt has nothing to
+# unstake and nothing to repay, so closing it is a bare withdrawal with no flash
+# loan — it matches none of the MultiplyDeleverage slots.
+
+[[domains.tx_variations]]
+version = "v1"
+name = "MultiplyWithdrawCollateral"
+max_gas_spend = 200000
+
+# Pyron: lendingAccountWithdrawWithSession
+[[domains.tx_variations.instructions]]
+program = "PyRon8FBSDSk6MxNKsZj2uZweBsa2nH5amyKnN6eN57"
+required = true
+
+[[domains.tx_variations.instructions.data]]
+start_byte = 0
+data_type = { Bytes = { length = 8 } }
+constraint = { EqualTo = [{ Bytes = "d8c6dba1679f8606" }] }
+
+# (Optional) Create memo
+[[domains.tx_variations.instructions]]
+program = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+required = false
+
+# ================================================
 # Valiant DEX Swap (USDC → FOGO)
 # ================================================
 
